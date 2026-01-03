@@ -1,3 +1,4 @@
+-- [nfnl] fnl/clearhead/init.fnl
 local M = {}
 local config = {inbox_file = "~/.local/share/clearhead_cli/inbox.actions", project_file = ".actions", auto_normalize = true}
 local states = {["not-started"] = " ", ["in-progress"] = "-", blocked = "=", completed = "x", cancelled = "_"}
