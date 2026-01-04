@@ -172,7 +172,7 @@
   (let [ok (pcall vim.treesitter.get_parser bufnr :actions)]
     (if ok
         (let [parser (vim.treesitter.get_parser bufnr :actions)
-              tree (first (parser:parse))
+              tree (. (parser:parse) 1)
               root (tree:root)
               query (vim.treesitter.query.parse :actions
                       "((state [
@@ -189,7 +189,7 @@
         nil)))
 
 (fn M.cycle-state []
-  "Cycle through states using Tree-sitter AST"
+  "Cycle through states using Tree-sitter AST and auto-add completion date"
   (let [bufnr (vim.api.nvim_get_current_buf)
         linenr (- (vim.fn.line ".") 1)
         node (get-action-state-node bufnr linenr)]
@@ -202,7 +202,14 @@
                 (set ns (. state-cycle next-idx))
                 (lua :break))))
           (let [(srow scol erow ecol) (node:range)]
-            (vim.api.nvim_buf_set_text bufnr srow scol erow ecol [ns])))
+            (vim.api.nvim_buf_set_text bufnr srow scol erow ecol [ns]))
+          ;; Auto-add completion date if state is now 'x'
+          (when (= ns :x)
+            (let [line (vim.fn.getline (+ linenr 1))]
+              (when (not (line:find "%%[0-9]"))
+                (let [now (vim.fn.strftime "%Y-%m-%dT%H:%M")
+                      new-line (.. line " %" now)]
+                  (vim.fn.setline (+ linenr 1) new-line))))))
         (vim.notify "No action state found on this line" vim.log.levels.WARN))))
 
 (fn M.set-state [state]
@@ -212,8 +219,16 @@
           linenr (- (vim.fn.line ".") 1)
           node (get-action-state-node bufnr linenr)]
       (if node
-          (let [(srow scol erow ecol) (node:range)]
-            (vim.api.nvim_buf_set_text bufnr srow scol erow ecol [state]))
+          (do
+            (let [(srow scol erow ecol) (node:range)]
+              (vim.api.nvim_buf_set_text bufnr srow scol erow ecol [state]))
+            ;; Auto-add completion date if state is 'x'
+            (when (= state :x)
+              (let [line (vim.fn.getline (+ linenr 1))]
+                (when (not (line:find "%%[0-9]"))
+                  (let [now (vim.fn.strftime "%Y-%m-%dT%H:%M")
+                        new-line (.. line " %" now)]
+                    (vim.fn.setline (+ linenr 1) new-line))))))
           (vim.notify "No action state found on this line" vim.log.levels.WARN)))))
 
 (fn M.get-status []
@@ -222,7 +237,7 @@
         ok (pcall vim.treesitter.get_parser bufnr :actions)]
     (if ok
         (let [parser (vim.treesitter.get_parser bufnr :actions)
-              tree (first (parser:parse))
+              tree (. (parser:parse) 1)
               root (tree:root)
               query (vim.treesitter.query.parse :actions
                       "((state [
@@ -249,7 +264,7 @@
         linenr (- (vim.fn.line ".") 1)
         ;; captures current action node
         parser (vim.treesitter.get_parser bufnr :actions)
-        tree (first (parser:parse))
+        tree (. (parser:parse) 1)
         root (tree:root)
         node (root:named_descendant_for_range linenr 0 linenr -1)]
     (var depth-markers "")
@@ -266,8 +281,9 @@
 
     (let [line (vim.fn.getline (+ linenr 1))
           indent (line:match "^(%s*)")
+          now (vim.fn.strftime "%Y-%m-%dT%H:%M")
           prefix (.. indent depth-markers (if (> (length depth-markers) 0) " " ""))]
-      (vim.fn.append (+ linenr 1) (.. prefix "[ ] "))
+      (vim.fn.append (+ linenr 1) (.. prefix "[ ]  ^" now))
       (vim.fn.cursor (+ linenr 2) (+ (length (.. prefix "[ ] ")) 1))
       (vim.cmd :startinsert!))))
 
@@ -293,7 +309,7 @@
     (if (and (not= filename "") bin)
         (do
           (vim.cmd :write)
-          (vim.fn.jobstart [bin :archive :--file filename]
+          (vim.fn.jobstart [bin :archive filename]
                            {:on_exit (fn [_ exit-code]
                                        (if (= exit-code 0)
                                            (do

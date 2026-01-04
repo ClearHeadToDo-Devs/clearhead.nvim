@@ -47,10 +47,27 @@ When `nvim_default_mappings` is enabled (default: `true`), the following buffer-
 | `<localleader>f` | Format/Normalize current file |
 | `<localleader>i` | Open Inbox (global or project) |
 | `<localleader>p` | Open Project file (e.g., `next.actions`) |
+| `<localleader>a` | Archive completed action trees |
+| `<localleader>o` | New smart action below |
 | `<localleader>x` | Set state to **Completed** (`x`) |
 | `<localleader>-` | Set state to **In Progress** (`-`) |
 | `<localleader>=` | Set state to **Blocked** (`=`) |
 | `<localleader>_` | Set state to **Cancelled** (`_`) |
+
+### Statusline Integration
+
+You can display the current buffer's action progress (e.g., `✓ 5/12`) in your statusline:
+
+```lua
+-- Example for lualine.nvim
+require('lualine').setup({
+  sections = {
+    lualine_x = { 
+      { function() return require('clearhead').get_status() end } 
+    }
+  }
+})
+```
 
 ### Environment Variables
 
