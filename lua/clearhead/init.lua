@@ -104,7 +104,19 @@ M["open-dir"] = function()
   end
 end
 M["setup-lsp"] = function(group)
-  if (config.lsp.enable and (vim.fn.executable("clearhead_cli") == 1)) then
+  local bin_name = "clearhead_cli"
+  local bin
+  if (vim.fn.executable(bin_name) == 1) then
+    bin = bin_name
+  else
+    local cargo_bin = (vim.fn.expand("~") .. "/.cargo/bin/clearhead_cli")
+    if (vim.fn.executable(cargo_bin) == 1) then
+      bin = cargo_bin
+    else
+      bin = nil
+    end
+  end
+  if (config.lsp.enable and bin) then
     local function _14_(args)
       local root
       do
@@ -115,9 +127,11 @@ M["setup-lsp"] = function(group)
           root = vim.fn.getcwd()
         end
       end
-      return vim.lsp.start({name = "clearhead-lsp", cmd = {"clearhead_cli", "lsp"}, root_dir = root})
+      return vim.lsp.start({name = "clearhead-lsp", cmd = {bin, "lsp"}, root_dir = root})
     end
     return vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _14_})
+  elseif (config.lsp.enable and not bin) then
+    return vim.notify("clearhead_cli binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.", vim.log.levels.WARN)
   else
     return nil
   end

@@ -105,23 +105,33 @@
 
 (fn M.setup-lsp [group]
   "Setup the Language Server for .actions files"
-  (when (and config.lsp.enable (= (vim.fn.executable :clearhead_cli) 1))
-    (vim.api.nvim_create_autocmd :FileType
-                                 {:pattern :actions
-                                  : group
-                                  :callback (fn [args]
-                                              (let [root (or (let [found (vim.fs.find [:.git :inbox.actions]
-                                                                                     {:upward true
-                                                                                      :path args.file})]
-                                                               (when (> (length found)
-                                                                        0)
-                                                                 (vim.fs.dirname (. found
-                                                                                    1))))
-                                                             (vim.fn.getcwd))]
-                                                (vim.lsp.start {:name :clearhead-lsp
-                                                                :cmd [:clearhead_cli
-                                                                      :lsp]
-                                                                :root_dir root})))})))
+  (let [bin-name :clearhead_cli
+        ;; Try to find the binary: in PATH, then in ~/.cargo/bin
+        bin (if (= (vim.fn.executable bin-name) 1)
+                bin-name
+                (let [cargo-bin (.. (vim.fn.expand "~") :/.cargo/bin/clearhead_cli)]
+                  (if (= (vim.fn.executable cargo-bin) 1)
+                      cargo-bin
+                      nil)))]
+    (if (and config.lsp.enable bin)
+        (vim.api.nvim_create_autocmd :FileType
+                                     {:pattern :actions
+                                      : group
+                                      :callback (fn [args]
+                                                  (let [root (or (let [found (vim.fs.find [:.git :inbox.actions]
+                                                                                         {:upward true
+                                                                                          :path args.file})]
+                                                                   (when (> (length found)
+                                                                            0)
+                                                                     (vim.fs.dirname (. found
+                                                                                        1))))
+                                                                 (vim.fn.getcwd))]
+                                                    (vim.lsp.start {:name :clearhead-lsp
+                                                                    :cmd [bin :lsp]
+                                                                    :root_dir root})))} )
+        (when (and config.lsp.enable (not bin))
+          (vim.notify "clearhead_cli binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory."
+                      vim.log.levels.WARN)))))
 
 (fn M.setup [opts]
   ;; Merge user config with defaults
