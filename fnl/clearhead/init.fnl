@@ -3,7 +3,11 @@
 ;; Default configuration
 (var config {:inbox_file "~/.local/share/clearhead_cli/inbox.actions"
              :project_file :.actions
-             :auto_normalize true})
+             :auto_normalize true
+             :format_on_save true
+             :lsp {:enable true}})
+
+;; ... state definitions and cycle code remains same ...
 
 ;; State definitions
 (local states {:not-started " "
@@ -71,6 +75,20 @@
           ;; CLI not available - silently skip
           nil))))
 
+(fn M.format []
+  "Format the current buffer using LSP (preferred) or CLI"
+  (let [clients (vim.lsp.get_clients {:name :clearhead-lsp})]
+    (if (> (length clients) 0)
+        (vim.lsp.buf.format {:name :clearhead-lsp})
+        (M.normalize (vim.api.nvim_get_current_buf)))))
+
+(fn M.get-conform-opts []
+  "Returns configuration for conform.nvim"
+  {:formatters_by_ft {:actions [:clearhead_cli]}
+   :formatters {:clearhead_cli {:command :clearhead_cli
+                                :args [:format :$FILENAME]
+                                :stdin false}}})
+
 (fn M.open-inbox []
   "Open the configured inbox file"
   (let [inbox-path (expand-path config.inbox_file)]
@@ -85,18 +103,40 @@
         (vim.notify "No .actions file found in current directory"
                     vim.log.levels.WARN))))
 
+(fn M.setup-lsp [group]
+  "Setup the Language Server for .actions files"
+  (when (and config.lsp.enable (= (vim.fn.executable :clearhead_cli) 1))
+    (vim.api.nvim_create_autocmd :FileType
+                                 {:pattern :actions
+                                  : group
+                                  :callback (fn [args]
+                                              (let [root (or (let [found (vim.fs.find [:.git :inbox.actions]
+                                                                                     {:upward true
+                                                                                      :path args.file})]
+                                                               (when (> (length found)
+                                                                        0)
+                                                                 (vim.fs.dirname (. found
+                                                                                    1))))
+                                                             (vim.fn.getcwd))]
+                                                (vim.lsp.start {:name :clearhead-lsp
+                                                                :cmd [:clearhead_cli
+                                                                      :lsp]
+                                                                :root_dir root})))})))
+
 (fn M.setup [opts]
   ;; Merge user config with defaults
   (when opts
     (each [k v (pairs opts)]
       (tset config k v)))
   (let [group (vim.api.nvim_create_augroup :clearhead {:clear true})]
-    ;; Normalize on save to ensure UUIDs are generated for new hand-written tasks
-    (when config.auto_normalize
-      (vim.api.nvim_create_autocmd :BufWritePost
+    ;; Setup LSP
+    (M.setup-lsp group)
+    ;; Format/Normalize on save
+    (when config.format_on_save
+      (vim.api.nvim_create_autocmd :BufWritePre
                                    {:pattern :*.actions
                                     : group
-                                    :callback (fn [args] (M.normalize args.buf))}))
+                                    :callback (fn [] (M.format))}))
     ;; Set conceallevel for a better UI experience
     (vim.api.nvim_create_autocmd :FileType
                                  {:pattern :actions

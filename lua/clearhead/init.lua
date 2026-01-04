@@ -1,6 +1,6 @@
 -- [nfnl] fnl/clearhead/init.fnl
 local M = {}
-local config = {inbox_file = "~/.local/share/clearhead_cli/inbox.actions", project_file = ".actions", auto_normalize = true}
+local config = {auto_normalize = true, format_on_save = true, inbox_file = "~/.local/share/clearhead_cli/inbox.actions", lsp = {enable = true}, project_file = ".actions"}
 local states = {["not-started"] = " ", ["in-progress"] = "-", blocked = "=", completed = "x", cancelled = "_"}
 local state_cycle = {" ", "-", "=", "x", "_"}
 local function expand_path(path)
@@ -79,6 +79,17 @@ M.normalize = function(bufnr)
     return nil
   end
 end
+M.format = function()
+  local clients = vim.lsp.get_clients({name = "clearhead-lsp"})
+  if (#clients > 0) then
+    return vim.lsp.buf.format({name = "clearhead-lsp"})
+  else
+    return M.normalize(vim.api.nvim_get_current_buf())
+  end
+end
+M["get-conform-opts"] = function()
+  return {formatters = {clearhead_cli = {args = {"format", "$FILENAME"}, command = "clearhead_cli", stdin = false}}, formatters_by_ft = {actions = {"clearhead_cli"}}}
+end
 M["open-inbox"] = function()
   local inbox_path = expand_path(config.inbox_file)
   return vim.cmd(("edit " .. inbox_path))
@@ -92,6 +103,25 @@ M["open-dir"] = function()
     return vim.notify("No .actions file found in current directory", vim.log.levels.WARN)
   end
 end
+M["setup-lsp"] = function(group)
+  if (config.lsp.enable and (vim.fn.executable("clearhead_cli") == 1)) then
+    local function _14_(args)
+      local root
+      do
+        local found = vim.fs.find({".git", "inbox.actions"}, {upward = true, path = args.file})
+        if (#found > 0) then
+          root = vim.fs.dirname(found[1])
+        else
+          root = vim.fn.getcwd()
+        end
+      end
+      return vim.lsp.start({name = "clearhead-lsp", cmd = {"clearhead_cli", "lsp"}, root_dir = root})
+    end
+    return vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _14_})
+  else
+    return nil
+  end
+end
 M.setup = function(opts)
   if opts then
     for k, v in pairs(opts) do
@@ -100,11 +130,12 @@ M.setup = function(opts)
   else
   end
   local group = vim.api.nvim_create_augroup("clearhead", {clear = true})
-  if config.auto_normalize then
-    local function _15_(args)
-      return M.normalize(args.buf)
+  M["setup-lsp"](group)
+  if config.format_on_save then
+    local function _15_()
+      return M.format()
     end
-    vim.api.nvim_create_autocmd("BufWritePost", {pattern = "*.actions", group = group, callback = _15_})
+    vim.api.nvim_create_autocmd("BufWritePre", {pattern = "*.actions", group = group, callback = _15_})
   else
   end
   local function _17_()
