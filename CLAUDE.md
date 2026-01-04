@@ -33,8 +33,13 @@ I want to minimize the amount of web fetches you are working with so you may ass
 In addition, the dotifiles can be assumed to be installed and to be the setup that you are working with. Upon request i will even add them to the repo so you can simply explore them when necessary
 
 ### Testing
-To run the configuration unit tests:
+To run the configuration unit tests (standalone):
 ```bash
 export LUA_PATH="./lua/?.lua;./lua/?/init.lua;;"
 nvim -l tests/test_config.lua
+```
+
+To run the full integration suite (requires plenary.nvim):
+```bash
+nvim --headless -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal_init.lua'}"
 ```
