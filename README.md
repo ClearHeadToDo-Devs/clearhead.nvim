@@ -33,8 +33,24 @@ require('clearhead').setup({
   nvim_format_on_save = true,    -- Format spacing on save
   nvim_lsp_enable = true,        -- Automatically start clearhead-lsp
   nvim_lsp_binary_path = "/path/to/clearhead_cli", -- Optional explicit path
+  nvim_default_mappings = true,  -- Set to false to disable default mappings
 })
 ```
+
+### Default Mappings
+
+When `nvim_default_mappings` is enabled (default: `true`), the following buffer-local mappings are available in `.actions` files using your `<localleader>` (default: `\`):
+
+| Mapping | Action |
+|---------|--------|
+| `<localleader><space>` | Cycle action state |
+| `<localleader>f` | Format/Normalize current file |
+| `<localleader>i` | Open Inbox (global or project) |
+| `<localleader>p` | Open Project file (e.g., `next.actions`) |
+| `<localleader>x` | Set state to **Completed** (`x`) |
+| `<localleader>-` | Set state to **In Progress** (`-`) |
+| `<localleader>=` | Set state to **Blocked** (`=`) |
+| `<localleader>_` | Set state to **Cancelled** (`_`) |
 
 ### Environment Variables
 

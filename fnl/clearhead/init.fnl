@@ -10,7 +10,8 @@
              :nvim_format_on_save true
              :nvim_lsp_enable true
              :nvim_inbox_file ""
-             :nvim_lsp_binary_path ""})
+             :nvim_lsp_binary_path ""
+             :nvim_default_mappings true})
 
 (fn expand-path [path]
   "Expand ~ and environment variables in path"
@@ -46,7 +47,8 @@
                   :CLEARHEAD_NVIM_FORMAT_ON_SAVE :nvim_format_on_save
                   :CLEARHEAD_NVIM_LSP_ENABLE :nvim_lsp_enable
                   :CLEARHEAD_NVIM_INBOX_FILE :nvim_inbox_file
-                  :CLEARHEAD_NVIM_LSP_BINARY_PATH :nvim_lsp_binary_path}]
+                  :CLEARHEAD_NVIM_LSP_BINARY_PATH :nvim_lsp_binary_path
+                  :CLEARHEAD_NVIM_DEFAULT_MAPPINGS :nvim_default_mappings}]
     (each [env-var key (pairs mappings)]
       (let [val (os.getenv env-var)]
         (when (and val (not= val ""))
@@ -112,7 +114,8 @@
                   :nvim_format_on_save true
                   :nvim_lsp_enable true
                   :nvim_inbox_file ""
-                  :nvim_lsp_binary_path ""}
+                  :nvim_lsp_binary_path ""
+                  :nvim_default_mappings true}
 
         global-config-dir (get-default-config-dir)
         global-config-path (.. global-config-dir :/config.json)
@@ -164,35 +167,109 @@
 ;; Cycle order: not-started -> in-progress -> blocked -> completed -> cancelled -> not-started
 (local state-cycle [" " "-" "=" :x "_"])
 
-(fn get-current-state [line]
-  "Extract the state character from a line with format '[X] ...'"
-  (line:match "^%s*%[(.?)%]"))
-
-(fn set-line-state [linenr new-state]
-  "Set the state of an action line"
-  (let [line (vim.fn.getline linenr)
-        new-line (line:gsub "^(%s*)%[.?%]" (.. "%1[" new-state "]"))]
-    (vim.fn.setline linenr new-line)))
+(fn get-action-state-node [bufnr linenr]
+  "Use Tree-sitter to find the state value node on the given line"
+  (let [ok (pcall vim.treesitter.get_parser bufnr :actions)]
+    (if ok
+        (let [parser (vim.treesitter.get_parser bufnr :actions)
+              tree (first (parser:parse))
+              root (tree:root)
+              query (vim.treesitter.query.parse :actions
+                      "((state [
+                         (state_not_started)
+                         (state_completed)
+                         (state_in_progress)
+                         (state_blocked)
+                         (state_cancelled)
+                        ] @val))")]
+          (var found-node nil)
+          (each [id node (query:iter_captures root bufnr linenr (+ linenr 1))]
+            (set found-node node))
+          found-node)
+        nil)))
 
 (fn M.cycle-state []
-  "Cycle through states: not-started -> in-progress -> blocked -> completed -> cancelled -> not-started"
-  (let [linenr (vim.fn.line ".")
-        line (vim.fn.getline linenr)
-        current (get-current-state line)]
-    (when current
-      (var next-state " ")
-      (each [i state (ipairs state-cycle)]
-        (when (= state current)
-          (let [next-idx (if (< i (length state-cycle)) (+ i 1) 1)]
-            (set next-state (. state-cycle next-idx))
-            (lua :break))))
-      (set-line-state linenr next-state))))
+  "Cycle through states using Tree-sitter AST"
+  (let [bufnr (vim.api.nvim_get_current_buf)
+        linenr (- (vim.fn.line ".") 1)
+        node (get-action-state-node bufnr linenr)]
+    (if node
+        (let [current (vim.treesitter.get_node_text node bufnr)]
+          (var ns " ")
+          (each [i state (ipairs state-cycle)]
+            (when (= state current)
+              (let [next-idx (if (< i (length state-cycle)) (+ i 1) 1)]
+                (set ns (. state-cycle next-idx))
+                (lua :break))))
+          (let [(srow scol erow ecol) (node:range)]
+            (vim.api.nvim_buf_set_text bufnr srow scol erow ecol [ns])))
+        (vim.notify "No action state found on this line" vim.log.levels.WARN))))
 
 (fn M.set-state [state]
-  "Set the state of the current line to a specific state"
+  "Set the state of the current line to a specific state using Tree-sitter"
   (fn []
-    (let [linenr (vim.fn.line ".")]
-      (set-line-state linenr state))))
+    (let [bufnr (vim.api.nvim_get_current_buf)
+          linenr (- (vim.fn.line ".") 1)
+          node (get-action-state-node bufnr linenr)]
+      (if node
+          (let [(srow scol erow ecol) (node:range)]
+            (vim.api.nvim_buf_set_text bufnr srow scol erow ecol [state]))
+          (vim.notify "No action state found on this line" vim.log.levels.WARN)))))
+
+(fn M.get-status []
+  "Return a status string for the current buffer using Tree-sitter"
+  (let [bufnr (vim.api.nvim_get_current_buf)
+        ok (pcall vim.treesitter.get_parser bufnr :actions)]
+    (if ok
+        (let [parser (vim.treesitter.get_parser bufnr :actions)
+              tree (first (parser:parse))
+              root (tree:root)
+              query (vim.treesitter.query.parse :actions
+                      "((state [
+                         (state_not_started)
+                         (state_completed)
+                         (state_in_progress)
+                         (state_blocked)
+                         (state_cancelled)
+                        ] @val))")]
+          (var total 0)
+          (var completed 0)
+          (each [id node (query:iter_captures root bufnr 0 -1)]
+            (set total (+ total 1))
+            (when (= (vim.treesitter.get_node_text node bufnr) :x)
+              (set completed (+ completed 1))))
+          (if (> total 0)
+              (.. "✓ " completed "/" total)
+              ""))
+        "")))
+
+(fn M.smart-new-action []
+  "Create a new action line below, inheriting depth and markers using Tree-sitter"
+  (let [bufnr (vim.api.nvim_get_current_buf)
+        linenr (- (vim.fn.line ".") 1)
+        ;; captures current action node
+        parser (vim.treesitter.get_parser bufnr :actions)
+        tree (first (parser:parse))
+        root (tree:root)
+        node (root:named_descendant_for_range linenr 0 linenr -1)]
+    (var depth-markers "")
+    (var current node)
+    ;; Walk up to find depth markers or action types
+    (while current
+      (let [type (current:type)]
+        (if (type:find "depth(%d)_action")
+            (let [depth (type:match "depth(%d)_action")
+                  markers (string.rep ">" (tonumber depth))]
+              (set depth-markers markers)
+              (set current nil)) ; stop
+            (set current (current:parent)))))
+
+    (let [line (vim.fn.getline (+ linenr 1))
+          indent (line:match "^(%s*)")
+          prefix (.. indent depth-markers (if (> (length depth-markers) 0) " " ""))]
+      (vim.fn.append (+ linenr 1) (.. prefix "[ ] "))
+      (vim.fn.cursor (+ linenr 2) (+ (length (.. prefix "[ ] ")) 1))
+      (vim.cmd :startinsert!))))
 
 (fn get-bin-path []
   "Get the path to the clearhead_cli binary"
@@ -208,6 +285,35 @@
               (if (= (vim.fn.executable cargo-bin) 1)
                   cargo-bin
                   nil))))))
+
+(fn M.archive []
+  "Archive completed actions from current buffer using clearhead_cli"
+  (let [filename (vim.api.nvim_buf_get_name 0)
+        bin (get-bin-path)]
+    (if (and (not= filename "") bin)
+        (do
+          (vim.cmd :write)
+          (vim.fn.jobstart [bin :archive :--file filename]
+                           {:on_exit (fn [_ exit-code]
+                                       (if (= exit-code 0)
+                                           (do
+                                             (vim.schedule (fn []
+                                                             (vim.api.nvim_command :edit!)
+                                                             (vim.notify "Archived completed actions."))))
+                                           (vim.notify "Archive failed." vim.log.levels.ERROR)))
+                            :on_stdout (fn [_ data]
+                                         (when (and data (> (length data) 0))
+                                           (let [msg (table.concat data "\n")]
+                                             (when (and (not= msg "") (not (msg:find "^%s*$")))
+                                               (vim.notify msg)))))
+                            :on_stderr (fn [_ data]
+                                         (when (and data (> (length data) 0))
+                                           (let [msg (table.concat data "\n")]
+                                             (when (and (not= msg "") (not (msg:find "^%s*$")))
+                                               (vim.notify (.. "Archive error: " msg)
+                                                           vim.log.levels.ERROR)))))}))
+        (vim.notify "Cannot archive: buffer has no file or CLI not found."
+                    vim.log.levels.ERROR))))
 
 (fn M.normalize [bufnr]
   "Runs clearhead_cli normalize on the buffer's file if CLI is available."
@@ -302,14 +408,27 @@
                                    {:pattern :*.actions
                                     : group
                                     :callback (fn [] (M.format))}))
-    ;; Set conceallevel for a better UI experience
+    ;; Set buffer-local settings and mappings for actions files
     (vim.api.nvim_create_autocmd :FileType
                                  {:pattern :actions
                                   : group
                                   :callback (fn []
                                               (set vim.opt_local.conceallevel 2)
                                               (set vim.opt_local.concealcursor
-                                                   :nc))})
+                                                   :nc)
+                                              (when config.nvim_default_mappings
+                                                (let [opts {:buffer true}]
+                                                  (vim.keymap.set :n :<localleader><space> M.cycle-state (vim.tbl_extend :force opts {:desc "Cycle action state"}))
+                                                  (vim.keymap.set :n :<localleader>f M.format (vim.tbl_extend :force opts {:desc "Format action file"}))
+                                                  (vim.keymap.set :n :<localleader>i M.open-inbox (vim.tbl_extend :force opts {:desc "Open inbox"}))
+                                                  (vim.keymap.set :n :<localleader>p M.open-dir (vim.tbl_extend :force opts {:desc "Open project file"}))
+                                                  (vim.keymap.set :n :<localleader>a M.archive (vim.tbl_extend :force opts {:desc "Archive completed actions"}))
+                                                  (vim.keymap.set :n :<localleader>o M.smart-new-action (vim.tbl_extend :force opts {:desc "New action below"}))
+                                                  ;; Specific state mappings
+                                                  (vim.keymap.set :n :<localleader>x (M.set-state :x) (vim.tbl_extend :force opts {:desc "Set state to Completed"}))
+                                                  (vim.keymap.set :n :<localleader>- (M.set-state :-) (vim.tbl_extend :force opts {:desc "Set state to In Progress"}))
+                                                  (vim.keymap.set :n :<localleader>= (M.set-state :=) (vim.tbl_extend :force opts {:desc "Set state to Blocked"}))
+                                                  (vim.keymap.set :n :<localleader>_ (M.set-state :_) (vim.tbl_extend :force opts {:desc "Set state to Cancelled"})))))})
     ;; Create user commands
     (vim.api.nvim_create_user_command :ClearheadInbox M.open-inbox {})
     (vim.api.nvim_create_user_command :ClearheadOpenDir M.open-dir {})))
