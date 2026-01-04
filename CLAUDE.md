@@ -31,3 +31,10 @@ The full setup we will be using is documented at [my dotfiles](https://github.co
 I want to minimize the amount of web fetches you are working with so you may assume that both the CLI and parser are sibling repos to this one.
 
 In addition, the dotifiles can be assumed to be installed and to be the setup that you are working with. Upon request i will even add them to the repo so you can simply explore them when necessary
+
+### Testing
+To run the configuration unit tests:
+```bash
+export LUA_PATH="./lua/?.lua;./lua/?/init.lua;;"
+nvim -l tests/test_config.lua
+```

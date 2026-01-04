@@ -11,15 +11,44 @@ Now, you are interesting because this is orthogonal to the [CLI](https://github.
 
 ## Configuration
 
+ClearHead follows a standard [Configuration Specification](https://github.com/ClearHeadToDo-Devs/specifications/blob/main/configuration_specification.md) across all its tools. It uses JSON for global/project config and supports environment variable overrides.
+
+### Precedence
+1. **Built-in defaults**
+2. **Global configuration**: `~/.config/clearhead/config.json`
+3. **Project configuration**: `<project-root>/.clearhead/config.json`
+4. **Environment variables**: `CLEARHEAD_*`
+5. **Setup options**: Options passed to `require('clearhead').setup({})`
+
+### Example `setup()` options
+
 ```lua
 require('clearhead').setup({
-  auto_normalize = true,    -- Ensure UUIDs exist on save
-  format_on_save = true,    -- Format spacing on save
-  lsp = {
-    enable = true,          -- Automatically start clearhead-lsp
-  }
+  -- Core settings
+  default_file = "inbox.actions",
+  project_files = {"next.actions", ".actions"},
+  
+  -- Neovim specific settings
+  nvim_auto_normalize = true,    -- Ensure UUIDs exist on save
+  nvim_format_on_save = true,    -- Format spacing on save
+  nvim_lsp_enable = true,        -- Automatically start clearhead-lsp
+  nvim_lsp_binary_path = "/path/to/clearhead_cli", -- Optional explicit path
 })
 ```
+
+### Environment Variables
+
+You can override any setting via environment variables:
+
+- `CLEARHEAD_DATA_DIR`
+- `CLEARHEAD_DEFAULT_FILE`
+- `CLEARHEAD_NVIM_FORMAT_ON_SAVE`
+- ...and more.
+
+### Project Detection
+ClearHead automatically detects projects by searching upward for a `.clearhead/` directory or any file listed in `project_files` (default: `next.actions`). When a project is detected, it will:
+1. Load `<project-root>/.clearhead/config.json`
+2. Use the project-local default file (e.g., `next.actions`) for `:ClearheadInbox` if no explicit `nvim_inbox_file` is set.
 
 ### Usage with conform.nvim
 
