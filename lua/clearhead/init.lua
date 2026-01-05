@@ -54,38 +54,43 @@ local function load_env()
   end
   return env_config
 end
-local function discover_project(project_files)
-  local current = vim.fn.getcwd()
+local function discover_project(project_files, start_path)
+  local current
+  if (start_path and (start_path ~= "")) then
+    current = start_path
+  else
+    current = vim.fn.getcwd()
+  end
   local found = nil
   local depth = 0
   while (not found and (depth < 100)) do
     do
       local dot_clearhead = (current .. "/.clearhead")
       if (vim.fn.isdirectory(dot_clearhead) == 1) then
-        local _8_
+        local _9_
         do
           local cfg = (dot_clearhead .. "/config.json")
           if (vim.fn.filereadable(cfg) == 1) then
-            _8_ = cfg
+            _9_ = cfg
           else
-            _8_ = nil
+            _9_ = nil
           end
         end
-        found = {root = current, config = _8_, ["default-file"] = (dot_clearhead .. "/inbox.actions")}
+        found = {root = current, config = _9_, ["default-file"] = (dot_clearhead .. "/inbox.actions")}
       else
         for _, f in ipairs(project_files) do
           local f_path = (current .. "/" .. f)
           if (not found and (vim.fn.filereadable(f_path) == 1)) then
-            local _10_
+            local _11_
             do
               local cfg = (current .. "/.clearhead/config.json")
               if (vim.fn.filereadable(cfg) == 1) then
-                _10_ = cfg
+                _11_ = cfg
               else
-                _10_ = nil
+                _11_ = nil
               end
             end
-            found = {root = current, config = _10_, ["default-file"] = f_path}
+            found = {root = current, config = _11_, ["default-file"] = f_path}
           else
           end
         end
@@ -214,7 +219,7 @@ M["cycle-state"] = function()
   end
 end
 M["set-state"] = function(state)
-  local function _29_()
+  local function _30_()
     local bufnr = vim.api.nvim_get_current_buf()
     local linenr = (vim.fn.line(".") - 1)
     local node = get_action_state_node(bufnr, linenr)
@@ -239,7 +244,7 @@ M["set-state"] = function(state)
       return vim.notify("No action state found on this line", vim.log.levels.WARN)
     end
   end
-  return _29_
+  return _30_
 end
 M["get-status"] = function()
   local bufnr = vim.api.nvim_get_current_buf()
@@ -291,13 +296,13 @@ M["smart-new-action"] = function()
   local indent = line:match("^(%s*)")
   local now = vim.fn.strftime("%Y-%m-%dT%H:%M")
   local prefix
-  local _37_
+  local _38_
   if (#depth_markers > 0) then
-    _37_ = " "
+    _38_ = " "
   else
-    _37_ = ""
+    _38_ = ""
   end
-  prefix = (indent .. depth_markers .. _37_)
+  prefix = (indent .. depth_markers .. _38_)
   vim.fn.append((linenr + 1), (prefix .. "[ ]  ^" .. now))
   vim.fn.cursor((linenr + 2), (#(prefix .. "[ ] ") + 1))
   return vim.cmd("startinsert!")
@@ -325,65 +330,80 @@ local function get_bin_path()
   end
 end
 M.archive = function()
-  local filename = vim.api.nvim_buf_get_name(0)
-  local bin = get_bin_path()
-  if ((filename ~= "") and bin) then
-    vim.cmd("write")
-    local function _43_(_, exit_code)
-      if (exit_code == 0) then
-        local function _44_()
-          vim.api.nvim_command("edit!")
-          return vim.notify("Archived completed actions.")
-        end
-        return vim.schedule(_44_)
-      else
-        return vim.notify("Archive failed.", vim.log.levels.ERROR)
-      end
-    end
-    local function _46_(_, data)
-      if (data and (#data > 0)) then
-        local msg = table.concat(data, "\n")
-        if ((msg ~= "") and not msg:find("^%s*$")) then
-          return vim.notify(msg)
-        else
-          return nil
-        end
+  local bufnr = vim.api.nvim_get_current_buf()
+  local clients = vim.lsp.get_clients({name = "clearhead-lsp", bufnr = bufnr})
+  if (#clients > 0) then
+    local client = clients[1]
+    local uri = vim.uri_from_bufnr(bufnr)
+    local function _44_(err, result)
+      if err then
+        return vim.notify(("LSP Archive failed: " .. err.message), vim.log.levels.ERROR)
       else
         return nil
       end
     end
-    local function _49_(_, data)
-      if (data and (#data > 0)) then
-        local msg = table.concat(data, "\n")
-        if ((msg ~= "") and not msg:find("^%s*$")) then
-          return vim.notify(("Archive error: " .. msg), vim.log.levels.ERROR)
-        else
-          return nil
-        end
-      else
-        return nil
-      end
-    end
-    return vim.fn.jobstart({bin, "archive", filename}, {on_exit = _43_, on_stdout = _46_, on_stderr = _49_})
+    return client.request("workspace/executeCommand", {command = "clearhead/archive", arguments = {uri}}, _44_)
   else
-    return vim.notify("Cannot archive: buffer has no file or CLI not found.", vim.log.levels.ERROR)
+    local filename = vim.api.nvim_buf_get_name(bufnr)
+    local bin = get_bin_path()
+    if ((filename ~= "") and bin) then
+      vim.cmd("write")
+      local function _46_(_, exit_code)
+        if (exit_code == 0) then
+          local function _47_()
+            vim.api.nvim_command("edit!")
+            return vim.notify("Archived completed actions.")
+          end
+          return vim.schedule(_47_)
+        else
+          return vim.notify("Archive failed.", vim.log.levels.ERROR)
+        end
+      end
+      local function _49_(_, data)
+        if (data and (#data > 0)) then
+          local msg = table.concat(data, "\n")
+          if ((msg ~= "") and not msg:find("^%s*$")) then
+            return vim.notify(msg)
+          else
+            return nil
+          end
+        else
+          return nil
+        end
+      end
+      local function _52_(_, data)
+        if (data and (#data > 0)) then
+          local msg = table.concat(data, "\n")
+          if ((msg ~= "") and not msg:find("^%s*$")) then
+            return vim.notify(("Archive error: " .. msg), vim.log.levels.ERROR)
+          else
+            return nil
+          end
+        else
+          return nil
+        end
+      end
+      return vim.fn.jobstart({bin, "archive", filename}, {on_exit = _46_, on_stdout = _49_, on_stderr = _52_})
+    else
+      return vim.notify("Cannot archive: buffer has no file or CLI not found.", vim.log.levels.ERROR)
+    end
   end
 end
 M.normalize = function(bufnr)
   local filename = vim.api.nvim_buf_get_name(bufnr)
   local bin = get_bin_path()
   if ((filename ~= "") and bin) then
-    local function _53_(_, exit_code)
+    local function _57_(_, exit_code)
       if (exit_code == 0) then
-        local function _54_()
+        local function _58_()
           return vim.api.nvim_command("checktime")
         end
-        return vim.schedule(_54_)
+        return vim.schedule(_58_)
       else
         return nil
       end
     end
-    local function _56_(_, data)
+    local function _60_(_, data)
       if (data and (#data > 0)) then
         local msg = table.concat(data, "\n")
         if (msg ~= "") then
@@ -395,21 +415,31 @@ M.normalize = function(bufnr)
         return nil
       end
     end
-    vim.fn.jobstart({bin, "normalize", filename, "--write"}, {on_exit = _53_, on_stderr = _56_})
+    vim.fn.jobstart({bin, "normalize", filename, "--write"}, {on_exit = _57_, on_stderr = _60_})
     return nil
   else
     return nil
   end
 end
 M.format = function()
-  local clients = vim.lsp.get_clients({name = "clearhead-lsp"})
-  if (#clients > 0) then
-    return vim.lsp.buf.format({name = "clearhead-lsp"})
+  local bufnr = vim.api.nvim_get_current_buf()
+  local attached = vim.lsp.get_clients({name = "clearhead-lsp", bufnr = bufnr})
+  if (#attached > 0) then
+    return vim.lsp.buf.format({name = "clearhead-lsp", bufnr = bufnr})
   else
-    if config.nvim_auto_normalize then
-      return M.normalize(vim.api.nvim_get_current_buf())
+    local all_clients = vim.lsp.get_clients({name = "clearhead-lsp"})
+    if (#all_clients > 0) then
+      M["attach-lsp"](bufnr)
+      local function _64_()
+        return vim.lsp.buf.format({name = "clearhead-lsp", bufnr = bufnr})
+      end
+      return vim.schedule(_64_)
     else
-      return nil
+      if config.nvim_auto_normalize then
+        return M.normalize(bufnr)
+      else
+        return nil
+      end
     end
   end
 end
@@ -447,15 +477,30 @@ M["open-dir"] = function()
     end
   end
 end
+M["attach-lsp"] = function(bufnr)
+  local bin = get_bin_path()
+  if (config.nvim_lsp_enable and bin) then
+    local filename = vim.api.nvim_buf_get_name(bufnr)
+    local start_path
+    if (filename and (filename ~= "")) then
+      start_path = vim.fn.fnamemodify(filename, ":p:h")
+    else
+      start_path = vim.fn.getcwd()
+    end
+    local project = discover_project(config.project_files, start_path)
+    local root = ((project and project.root) or start_path or vim.fn.getcwd())
+    return vim.lsp.start({name = "clearhead-lsp", cmd = {bin, "lsp"}, root_dir = root}, {bufnr = bufnr})
+  else
+    return nil
+  end
+end
 M["setup-lsp"] = function(group)
   local bin = get_bin_path()
   if (config.nvim_lsp_enable and bin) then
-    local function _66_(args)
-      local project = discover_project(config.project_files)
-      local root = ((project and project.root) or vim.fs.dirname(args.file) or vim.fn.getcwd())
-      return vim.lsp.start({name = "clearhead-lsp", cmd = {bin, "lsp"}, root_dir = root})
+    local function _74_(args)
+      return M["attach-lsp"](args.buf)
     end
-    return vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _66_})
+    return vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _74_})
   else
     if (config.nvim_lsp_enable and not bin) then
       return vim.notify("clearhead_cli binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.", vim.log.levels.WARN)
@@ -472,15 +517,16 @@ M.setup = function(opts)
   local group = vim.api.nvim_create_augroup("clearhead", {clear = true})
   M["setup-lsp"](group)
   if config.nvim_format_on_save then
-    local function _69_()
+    local function _77_()
       return M.format()
     end
-    vim.api.nvim_create_autocmd("BufWritePre", {pattern = "*.actions", group = group, callback = _69_})
+    vim.api.nvim_create_autocmd("BufWritePre", {pattern = "*.actions", group = group, callback = _77_})
   else
   end
-  local function _71_()
+  local function _79_(args)
     vim.opt_local.conceallevel = 2
     vim.opt_local.concealcursor = "nc"
+    M["attach-lsp"](args.buf)
     if config.nvim_default_mappings then
       local opts0 = {buffer = true}
       vim.keymap.set("n", "<localleader><space>", M["cycle-state"], vim.tbl_extend("force", opts0, {desc = "Cycle action state"}))
@@ -497,7 +543,7 @@ M.setup = function(opts)
       return nil
     end
   end
-  vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _71_})
+  vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _79_})
   vim.api.nvim_create_user_command("ClearheadInbox", M["open-inbox"], {})
   return vim.api.nvim_create_user_command("ClearheadOpenDir", M["open-dir"], {})
 end

@@ -63,9 +63,9 @@
             (tset env-config key parsed-val)))))
     env-config))
 
-(fn discover-project [project-files]
+(fn discover-project [project-files start-path]
   "Search upward for a project root"
-  (var current (vim.fn.getcwd))
+  (var current (if (and start-path (not= start-path "")) start-path (vim.fn.getcwd)))
   (var found nil)
   (var depth 0)
   (while (and (not found) (< depth 100))
@@ -303,33 +303,46 @@
                   nil))))))
 
 (fn M.archive []
-  "Archive completed actions from current buffer using clearhead_cli"
-  (let [filename (vim.api.nvim_buf_get_name 0)
-        bin (get-bin-path)]
-    (if (and (not= filename "") bin)
-        (do
-          (vim.cmd :write)
-          (vim.fn.jobstart [bin :archive filename]
-                           {:on_exit (fn [_ exit-code]
-                                       (if (= exit-code 0)
-                                           (do
-                                             (vim.schedule (fn []
-                                                             (vim.api.nvim_command :edit!)
-                                                             (vim.notify "Archived completed actions."))))
-                                           (vim.notify "Archive failed." vim.log.levels.ERROR)))
-                            :on_stdout (fn [_ data]
-                                         (when (and data (> (length data) 0))
-                                           (let [msg (table.concat data "\n")]
-                                             (when (and (not= msg "") (not (msg:find "^%s*$")))
-                                               (vim.notify msg)))))
-                            :on_stderr (fn [_ data]
-                                         (when (and data (> (length data) 0))
-                                           (let [msg (table.concat data "\n")]
-                                             (when (and (not= msg "") (not (msg:find "^%s*$")))
-                                               (vim.notify (.. "Archive error: " msg)
-                                                           vim.log.levels.ERROR)))))}))
-        (vim.notify "Cannot archive: buffer has no file or CLI not found."
-                    vim.log.levels.ERROR))))
+  "Archive completed actions from current buffer (prefers LSP command)"
+  (let [bufnr (vim.api.nvim_get_current_buf)
+        clients (vim.lsp.get_clients {:name :clearhead-lsp : bufnr})]
+    (if (> (length clients) 0)
+        (let [client (. clients 1)
+              uri (vim.uri_from_bufnr bufnr)]
+          (client.request :workspace/executeCommand
+                          {:command :clearhead/archive
+                           :arguments [uri]}
+                          (fn [err result]
+                            (when err
+                              (vim.notify (.. "LSP Archive failed: " err.message)
+                                          vim.log.levels.ERROR)))))
+        ;; Fallback to CLI job
+        (let [filename (vim.api.nvim_buf_get_name bufnr)
+              bin (get-bin-path)]
+          (if (and (not= filename "") bin)
+              (do
+                (vim.cmd :write)
+                (vim.fn.jobstart [bin :archive filename]
+                                 {:on_exit (fn [_ exit-code]
+                                             (if (= exit-code 0)
+                                                 (do
+                                                   (vim.schedule (fn []
+                                                                   (vim.api.nvim_command :edit!)
+                                                                   (vim.notify "Archived completed actions."))))
+                                                 (vim.notify "Archive failed." vim.log.levels.ERROR)))
+                                  :on_stdout (fn [_ data]
+                                               (when (and data (> (length data) 0))
+                                                 (let [msg (table.concat data "\n")]
+                                                   (when (and (not= msg "") (not (msg:find "^%s*$")))
+                                                     (vim.notify msg)))))
+                                  :on_stderr (fn [_ data]
+                                               (when (and data (> (length data) 0))
+                                                 (let [msg (table.concat data "\n")]
+                                                   (when (and (not= msg "") (not (msg:find "^%s*$")))
+                                                     (vim.notify (.. "Archive error: " msg)
+                                                                 vim.log.levels.ERROR)))))}))
+              (vim.notify "Cannot archive: buffer has no file or CLI not found."
+                          vim.log.levels.ERROR))))))
 
 (fn M.normalize [bufnr]
   "Runs clearhead_cli normalize on the buffer's file if CLI is available."
@@ -353,11 +366,17 @@
 
 (fn M.format []
   "Format the current buffer using LSP (preferred) or CLI"
-  (let [clients (vim.lsp.get_clients {:name :clearhead-lsp})]
-    (if (> (length clients) 0)
-        (vim.lsp.buf.format {:name :clearhead-lsp})
-        (when config.nvim_auto_normalize
-          (M.normalize (vim.api.nvim_get_current_buf))))))
+  (let [bufnr (vim.api.nvim_get_current_buf)
+        attached (vim.lsp.get_clients {:name :clearhead-lsp : bufnr})]
+    (if (> (length attached) 0)
+        (vim.lsp.buf.format {:name :clearhead-lsp : bufnr})
+        (let [all-clients (vim.lsp.get_clients {:name :clearhead-lsp})]
+          (if (> (length all-clients) 0)
+              (do
+                (M.attach-lsp bufnr)
+                (vim.schedule (fn [] (vim.lsp.buf.format {:name :clearhead-lsp : bufnr}))))
+              (when config.nvim_auto_normalize
+                (M.normalize bufnr)))))))
 
 (fn M.get-conform-opts []
   "Returns configuration for conform.nvim"
@@ -391,6 +410,22 @@
               (vim.notify "No .actions file found in current directory"
                           vim.log.levels.WARN))))))
 
+(fn M.attach-lsp [bufnr]
+  "Attach the Language Server to a specific buffer"
+  (let [bin (get-bin-path)]
+    (when (and config.nvim_lsp_enable bin)
+      (let [filename (vim.api.nvim_buf_get_name bufnr)
+            start-path (if (and filename (not= filename ""))
+                           (vim.fn.fnamemodify filename ":p:h")
+                           (vim.fn.getcwd))
+            project (discover-project config.project_files start-path)
+            root (or (and project project.root)
+                     start-path
+                     (vim.fn.getcwd))]
+        (vim.lsp.start {:name :clearhead-lsp
+                        :cmd [bin :lsp]
+                        :root_dir root} {:bufnr bufnr})))))
+
 (fn M.setup-lsp [group]
   "Setup the Language Server for .actions files"
   (let [bin (get-bin-path)]
@@ -399,13 +434,7 @@
                                      {:pattern :actions
                                       : group
                                       :callback (fn [args]
-                                                  (let [project (discover-project config.project_files)
-                                                        root (or (and project project.root)
-                                                                 (vim.fs.dirname args.file)
-                                                                 (vim.fn.getcwd))]
-                                                    (vim.lsp.start {:name :clearhead-lsp
-                                                                    :cmd [bin :lsp]
-                                                                    :root_dir root})))} )
+                                                  (M.attach-lsp args.buf))})
         (when (and config.nvim_lsp_enable (not bin))
           (vim.notify "clearhead_cli binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory."
                       vim.log.levels.WARN)))))
@@ -428,10 +457,12 @@
     (vim.api.nvim_create_autocmd :FileType
                                  {:pattern :actions
                                   : group
-                                  :callback (fn []
+                                  :callback (fn [args]
                                               (set vim.opt_local.conceallevel 2)
                                               (set vim.opt_local.concealcursor
                                                    :nc)
+                                              ;; Ensure LSP is attached (callback above handles it too but being explicit helps)
+                                              (M.attach-lsp args.buf)
                                               (when config.nvim_default_mappings
                                                 (let [opts {:buffer true}]
                                                   (vim.keymap.set :n :<localleader><space> M.cycle-state (vim.tbl_extend :force opts {:desc "Cycle action state"}))

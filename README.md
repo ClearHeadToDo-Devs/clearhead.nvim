@@ -100,7 +100,15 @@ require('conform').setup({
 - `:ClearheadInbox`: Open your configured inbox file.
 - `:ClearheadOpenDir`: Open the first `.actions` file in the current directory.
 
-### Requirements
+## Development Philosophy
+
+`clearhead.nvim` is designed as a **Thin Client**. 
+
+1. **LSP-First**: Business logic (like archiving, linting, or complex formatting) should live in the Rust CLI/LSP, not in Fennel. 
+2. **Commands over Shell**: Prefer calling LSP commands (`workspace/executeCommand`) instead of spawning shell jobs with `jobstart`. This allows the LSP to return `WorkspaceEdit` objects, providing a smoother experience without buffer reloads.
+3. **AST in Rust**: While Tree-sitter is available in Neovim, complex AST manipulations are preferred in the Rust LSP to ensure portability to other editors (VSCode, Zed, etc.).
+
+## Requirements
 - Neovim 0.11+
 - tree-sitter support enabled
   - and the `tree-sitter-actions` grammar installed
