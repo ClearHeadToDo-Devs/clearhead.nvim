@@ -11,14 +11,13 @@ Now, you are interesting because this is orthogonal to the [CLI](https://github.
 
 ## Configuration
 
-ClearHead follows a standard [Configuration Specification](https://github.com/ClearHeadToDo-Devs/specifications/blob/main/configuration_specification.md) across all its tools. It uses JSON for global/project config and supports environment variable overrides.
+ClearHead follows a standard [Configuration Specification](https://github.com/ClearHeadToDo-Devs/specifications/blob/main/configuration_specification.md) across all its tools. It uses JSON for global config and supports environment variable overrides.
 
 ### Precedence
 1. **Built-in defaults**
 2. **Global configuration**: `~/.config/clearhead/config.json`
-3. **Project configuration**: `<project-root>/.clearhead/config.json`
-4. **Environment variables**: `CLEARHEAD_*`
-5. **Setup options**: Options passed to `require('clearhead').setup({})`
+3. **Environment variables**: `CLEARHEAD_*`
+4. **Setup options**: Options passed to `require('clearhead').setup({})`
 
 ### Example `setup()` options
 
@@ -26,8 +25,7 @@ ClearHead follows a standard [Configuration Specification](https://github.com/Cl
 require('clearhead').setup({
   -- Core settings
   default_file = "inbox.actions",
-  project_files = {"next.actions", ".actions"},
-  
+
   -- Neovim specific settings
   nvim_auto_normalize = true,    -- Ensure UUIDs exist on save
   nvim_format_on_save = true,    -- Format spacing on save
@@ -45,8 +43,8 @@ When `nvim_default_mappings` is enabled (default: `true`), the following buffer-
 |---------|--------|
 | `<localleader><space>` | Cycle action state |
 | `<localleader>f` | Format/Normalize current file |
-| `<localleader>i` | Open Inbox (global or project) |
-| `<localleader>p` | Open Project file (e.g., `next.actions`) |
+| `<localleader>i` | Open Inbox |
+| `<localleader>p` | Browse workspace (opens data directory) |
 | `<localleader>a` | Archive completed action trees |
 | `<localleader>o` | New smart action below |
 | `<localleader>x` | Set state to **Completed** (`x`) |
@@ -78,11 +76,6 @@ You can override any setting via environment variables:
 - `CLEARHEAD_NVIM_FORMAT_ON_SAVE`
 - ...and more.
 
-### Project Detection
-ClearHead automatically detects projects by searching upward for a `.clearhead/` directory or any file listed in `project_files` (default: `next.actions`). When a project is detected, it will:
-1. Load `<project-root>/.clearhead/config.json`
-2. Use the project-local default file (e.g., `next.actions`) for `:ClearheadInbox` if no explicit `nvim_inbox_file` is set.
-
 ### Usage with conform.nvim
 
 If you use `conform.nvim` for formatting, you can integrate `clearhead_cli` easily:
@@ -98,7 +91,7 @@ require('conform').setup({
 
 ### Manual Usage
 - `:ClearheadInbox`: Open your configured inbox file.
-- `:ClearheadOpenDir`: Open the first `.actions` file in the current directory.
+- `:ClearheadWorkspace`: Browse your workspace directory (works great with oil.nvim, snacks.nvim, etc.).
 
 ## Development Philosophy
 

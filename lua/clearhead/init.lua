@@ -1,5 +1,5 @@
 local M = {}
-local config = {data_dir = "", config_dir = "", default_file = "inbox.actions", project_files = {"next.actions"}, use_project_config = true, nvim_auto_normalize = true, nvim_format_on_save = true, nvim_lsp_enable = true, nvim_inbox_file = "", nvim_lsp_binary_path = "", nvim_default_mappings = true}
+local config = {data_dir = "", config_dir = "", default_file = "inbox.actions", nvim_auto_normalize = true, nvim_format_on_save = true, nvim_lsp_enable = true, nvim_inbox_file = "", nvim_lsp_binary_path = "", nvim_default_mappings = true}
 local function expand_path(path)
   if (path and (path ~= "")) then
     return vim.fn.expand(path)
@@ -29,7 +29,7 @@ local function get_default_data_dir()
 end
 local function load_env()
   local env_config = {}
-  local mappings = {CLEARHEAD_DATA_DIR = "data_dir", CLEARHEAD_CONFIG_DIR = "config_dir", CLEARHEAD_DEFAULT_FILE = "default_file", CLEARHEAD_PROJECT_FILES = "project_files", CLEARHEAD_USE_PROJECT_CONFIG = "use_project_config", CLEARHEAD_NVIM_AUTO_NORMALIZE = "nvim_auto_normalize", CLEARHEAD_NVIM_FORMAT_ON_SAVE = "nvim_format_on_save", CLEARHEAD_NVIM_LSP_ENABLE = "nvim_lsp_enable", CLEARHEAD_NVIM_INBOX_FILE = "nvim_inbox_file", CLEARHEAD_NVIM_LSP_BINARY_PATH = "nvim_lsp_binary_path", CLEARHEAD_NVIM_DEFAULT_MAPPINGS = "nvim_default_mappings"}
+  local mappings = {CLEARHEAD_DATA_DIR = "data_dir", CLEARHEAD_CONFIG_DIR = "config_dir", CLEARHEAD_DEFAULT_FILE = "default_file", CLEARHEAD_NVIM_AUTO_NORMALIZE = "nvim_auto_normalize", CLEARHEAD_NVIM_FORMAT_ON_SAVE = "nvim_format_on_save", CLEARHEAD_NVIM_LSP_ENABLE = "nvim_lsp_enable", CLEARHEAD_NVIM_INBOX_FILE = "nvim_inbox_file", CLEARHEAD_NVIM_LSP_BINARY_PATH = "nvim_lsp_binary_path", CLEARHEAD_NVIM_DEFAULT_MAPPINGS = "nvim_default_mappings"}
   for env_var, key in pairs(mappings) do
     local val = os.getenv(env_var)
     if (val and (val ~= "")) then
@@ -54,61 +54,6 @@ local function load_env()
   end
   return env_config
 end
-local function discover_project(project_files, start_path)
-  local current
-  if (start_path and (start_path ~= "")) then
-    current = start_path
-  else
-    current = vim.fn.getcwd()
-  end
-  local found = nil
-  local depth = 0
-  while (not found and (depth < 100)) do
-    do
-      local dot_clearhead = (current .. "/.clearhead")
-      if (vim.fn.isdirectory(dot_clearhead) == 1) then
-        local _9_
-        do
-          local cfg = (dot_clearhead .. "/config.json")
-          if (vim.fn.filereadable(cfg) == 1) then
-            _9_ = cfg
-          else
-            _9_ = nil
-          end
-        end
-        found = {root = current, config = _9_, ["default-file"] = (dot_clearhead .. "/inbox.actions")}
-      else
-        for _, f in ipairs(project_files) do
-          local f_path = (current .. "/" .. f)
-          if (not found and (vim.fn.filereadable(f_path) == 1)) then
-            local _11_
-            do
-              local cfg = (current .. "/.clearhead/config.json")
-              if (vim.fn.filereadable(cfg) == 1) then
-                _11_ = cfg
-              else
-                _11_ = nil
-              end
-            end
-            found = {root = current, config = _11_, ["default-file"] = f_path}
-          else
-          end
-        end
-      end
-    end
-    if found then
-    else
-      local parent = vim.fn.fnamemodify(current, ":h")
-      if (parent == current) then
-        depth = 100
-      else
-        current = parent
-        depth = (depth + 1)
-      end
-    end
-  end
-  return found
-end
 local function read_json_file(path)
   if (path and (vim.fn.filereadable(path) == 1)) then
     local lines = vim.fn.readfile(path)
@@ -123,29 +68,17 @@ local function read_json_file(path)
   end
 end
 local function load_config_internal(user_opts)
-  local defaults = {data_dir = "", config_dir = "", default_file = "inbox.actions", project_files = {"next.actions"}, use_project_config = true, nvim_auto_normalize = true, nvim_format_on_save = true, nvim_lsp_enable = true, nvim_inbox_file = "", nvim_lsp_binary_path = "", nvim_default_mappings = true}
+  local defaults = {data_dir = "", config_dir = "", default_file = "inbox.actions", nvim_auto_normalize = true, nvim_format_on_save = true, nvim_lsp_enable = true, nvim_inbox_file = "", nvim_lsp_binary_path = "", nvim_default_mappings = true}
   local global_config_dir = get_default_config_dir()
   local global_config_path = (global_config_dir .. "/config.json")
   local global_config = read_json_file(global_config_path)
   local base_config = vim.tbl_extend("force", defaults, global_config)
-  local project_context
-  if base_config.use_project_config then
-    project_context = discover_project(base_config.project_files)
-  else
-    project_context = nil
-  end
-  local base_config0
-  if (project_context and project_context.config) then
-    base_config0 = vim.tbl_extend("force", base_config, read_json_file(project_context.config))
-  else
-    base_config0 = base_config
-  end
-  local base_config1 = vim.tbl_extend("force", base_config0, load_env())
+  local base_config0 = vim.tbl_extend("force", base_config, load_env())
   local final_config
   if user_opts then
-    final_config = vim.tbl_extend("force", base_config1, user_opts)
+    final_config = vim.tbl_extend("force", base_config0, user_opts)
   else
-    final_config = base_config1
+    final_config = base_config0
   end
   if ((final_config.config_dir == "") or not final_config.config_dir) then
     final_config.config_dir = global_config_dir
@@ -157,9 +90,9 @@ local function load_config_internal(user_opts)
   else
     final_config.data_dir = expand_path(final_config.data_dir)
   end
-  return {config = final_config, project = project_context}
+  return {config = final_config}
 end
-M._testing = {["load-config-internal"] = load_config_internal, ["discover-project"] = discover_project}
+M._testing = {["load-config-internal"] = load_config_internal}
 local states = {["not-started"] = " ", ["in-progress"] = "-", blocked = "=", completed = "x", cancelled = "_"}
 local state_cycle = {" ", "-", "=", "x", "_"}
 local function get_action_state_node(bufnr, linenr)
@@ -219,7 +152,7 @@ M["cycle-state"] = function()
   end
 end
 M["set-state"] = function(state)
-  local function _30_()
+  local function _19_()
     local bufnr = vim.api.nvim_get_current_buf()
     local linenr = (vim.fn.line(".") - 1)
     local node = get_action_state_node(bufnr, linenr)
@@ -244,7 +177,7 @@ M["set-state"] = function(state)
       return vim.notify("No action state found on this line", vim.log.levels.WARN)
     end
   end
-  return _30_
+  return _19_
 end
 M["get-status"] = function()
   local bufnr = vim.api.nvim_get_current_buf()
@@ -296,13 +229,13 @@ M["smart-new-action"] = function()
   local indent = line:match("^(%s*)")
   local now = vim.fn.strftime("%Y-%m-%dT%H:%M")
   local prefix
-  local _38_
+  local _27_
   if (#depth_markers > 0) then
-    _38_ = " "
+    _27_ = " "
   else
-    _38_ = ""
+    _27_ = ""
   end
-  prefix = (indent .. depth_markers .. _38_)
+  prefix = (indent .. depth_markers .. _27_)
   vim.fn.append((linenr + 1), (prefix .. "[ ]  ^" .. now))
   vim.fn.cursor((linenr + 2), (#(prefix .. "[ ] ") + 1))
   return vim.cmd("startinsert!")
@@ -335,31 +268,31 @@ M.archive = function()
   if (#clients > 0) then
     local client = clients[1]
     local uri = vim.uri_from_bufnr(bufnr)
-    local function _44_(err, result)
+    local function _33_(err, result)
       if err then
         return vim.notify(("LSP Archive failed: " .. err.message), vim.log.levels.ERROR)
       else
         return nil
       end
     end
-    return client.request("workspace/executeCommand", {command = "clearhead/archive", arguments = {uri}}, _44_)
+    return client.request("workspace/executeCommand", {command = "clearhead/archive", arguments = {uri}}, _33_)
   else
     local filename = vim.api.nvim_buf_get_name(bufnr)
     local bin = get_bin_path()
     if ((filename ~= "") and bin) then
       vim.cmd("write")
-      local function _46_(_, exit_code)
+      local function _35_(_, exit_code)
         if (exit_code == 0) then
-          local function _47_()
+          local function _36_()
             vim.api.nvim_command("edit!")
             return vim.notify("Archived completed actions.")
           end
-          return vim.schedule(_47_)
+          return vim.schedule(_36_)
         else
           return vim.notify("Archive failed.", vim.log.levels.ERROR)
         end
       end
-      local function _49_(_, data)
+      local function _38_(_, data)
         if (data and (#data > 0)) then
           local msg = table.concat(data, "\n")
           if ((msg ~= "") and not msg:find("^%s*$")) then
@@ -371,7 +304,7 @@ M.archive = function()
           return nil
         end
       end
-      local function _52_(_, data)
+      local function _41_(_, data)
         if (data and (#data > 0)) then
           local msg = table.concat(data, "\n")
           if ((msg ~= "") and not msg:find("^%s*$")) then
@@ -383,7 +316,7 @@ M.archive = function()
           return nil
         end
       end
-      return vim.fn.jobstart({bin, "archive", filename}, {on_exit = _46_, on_stdout = _49_, on_stderr = _52_})
+      return vim.fn.jobstart({bin, "archive", filename}, {on_exit = _35_, on_stdout = _38_, on_stderr = _41_})
     else
       return vim.notify("Cannot archive: buffer has no file or CLI not found.", vim.log.levels.ERROR)
     end
@@ -393,17 +326,17 @@ M.normalize = function(bufnr)
   local filename = vim.api.nvim_buf_get_name(bufnr)
   local bin = get_bin_path()
   if ((filename ~= "") and bin) then
-    local function _57_(_, exit_code)
+    local function _46_(_, exit_code)
       if (exit_code == 0) then
-        local function _58_()
+        local function _47_()
           return vim.api.nvim_command("checktime")
         end
-        return vim.schedule(_58_)
+        return vim.schedule(_47_)
       else
         return nil
       end
     end
-    local function _60_(_, data)
+    local function _49_(_, data)
       if (data and (#data > 0)) then
         local msg = table.concat(data, "\n")
         if (msg ~= "") then
@@ -415,7 +348,7 @@ M.normalize = function(bufnr)
         return nil
       end
     end
-    vim.fn.jobstart({bin, "normalize", filename, "--write"}, {on_exit = _57_, on_stderr = _60_})
+    vim.fn.jobstart({bin, "normalize", filename, "--write"}, {on_exit = _46_, on_stderr = _49_})
     return nil
   else
     return nil
@@ -430,10 +363,10 @@ M.format = function()
     local all_clients = vim.lsp.get_clients({name = "clearhead-lsp"})
     if (#all_clients > 0) then
       M["attach-lsp"](bufnr)
-      local function _64_()
+      local function _53_()
         return vim.lsp.buf.format({name = "clearhead-lsp", bufnr = bufnr})
       end
-      return vim.schedule(_64_)
+      return vim.schedule(_53_)
     else
       if config.nvim_auto_normalize then
         return M.normalize(bufnr)
@@ -449,46 +382,23 @@ end
 M["open-inbox"] = function()
   local ctx = load_config_internal()
   local cfg = ctx.config
-  local project = ctx.project
   local inbox_path
   if (cfg.nvim_inbox_file and (cfg.nvim_inbox_file ~= "")) then
     inbox_path = expand_path(cfg.nvim_inbox_file)
   else
-    if (project and project["default-file"]) then
-      inbox_path = project["default-file"]
-    else
-      local base = expand_path(cfg.data_dir)
-      inbox_path = (base .. "/" .. cfg.default_file)
-    end
+    local base = expand_path(cfg.data_dir)
+    inbox_path = (base .. "/" .. cfg.default_file)
   end
   return vim.cmd(("edit " .. inbox_path))
 end
-M["open-dir"] = function()
-  local project = discover_project(config.project_files)
-  if (project and project["default-file"]) then
-    return vim.cmd(("edit " .. project["default-file"]))
-  else
-    local cwd = vim.fn.getcwd()
-    local actions_files = vim.fn.glob((cwd .. "/*.actions"), true, true)
-    if (#actions_files > 0) then
-      return vim.cmd(("edit " .. actions_files[1]))
-    else
-      return vim.notify("No .actions file found in current directory", vim.log.levels.WARN)
-    end
-  end
+M["open-workspace"] = function()
+  local workspace = expand_path(config.data_dir)
+  return vim.cmd(("edit " .. workspace))
 end
 M["attach-lsp"] = function(bufnr)
   local bin = get_bin_path()
   if (config.nvim_lsp_enable and bin) then
-    local filename = vim.api.nvim_buf_get_name(bufnr)
-    local start_path
-    if (filename and (filename ~= "")) then
-      start_path = vim.fn.fnamemodify(filename, ":p:h")
-    else
-      start_path = vim.fn.getcwd()
-    end
-    local project = discover_project(config.project_files, start_path)
-    local root = ((project and project.root) or start_path or vim.fn.getcwd())
+    local root = expand_path(config.data_dir)
     return vim.lsp.start({name = "clearhead-lsp", cmd = {bin, "lsp"}, root_dir = root}, {bufnr = bufnr})
   else
     return nil
@@ -497,10 +407,10 @@ end
 M["setup-lsp"] = function(group)
   local bin = get_bin_path()
   if (config.nvim_lsp_enable and bin) then
-    local function _74_(args)
+    local function _59_(args)
       return M["attach-lsp"](args.buf)
     end
-    return vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _74_})
+    return vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _59_})
   else
     if (config.nvim_lsp_enable and not bin) then
       return vim.notify("clearhead_cli binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.", vim.log.levels.WARN)
@@ -517,13 +427,13 @@ M.setup = function(opts)
   local group = vim.api.nvim_create_augroup("clearhead", {clear = true})
   M["setup-lsp"](group)
   if config.nvim_format_on_save then
-    local function _77_()
+    local function _62_()
       return M.format()
     end
-    vim.api.nvim_create_autocmd("BufWritePre", {pattern = "*.actions", group = group, callback = _77_})
+    vim.api.nvim_create_autocmd("BufWritePre", {pattern = "*.actions", group = group, callback = _62_})
   else
   end
-  local function _79_(args)
+  local function _64_(args)
     vim.opt_local.conceallevel = 2
     vim.opt_local.concealcursor = "nc"
     M["attach-lsp"](args.buf)
@@ -532,7 +442,7 @@ M.setup = function(opts)
       vim.keymap.set("n", "<localleader><space>", M["cycle-state"], vim.tbl_extend("force", opts0, {desc = "Cycle action state"}))
       vim.keymap.set("n", "<localleader>f", M.format, vim.tbl_extend("force", opts0, {desc = "Format action file"}))
       vim.keymap.set("n", "<localleader>i", M["open-inbox"], vim.tbl_extend("force", opts0, {desc = "Open inbox"}))
-      vim.keymap.set("n", "<localleader>p", M["open-dir"], vim.tbl_extend("force", opts0, {desc = "Open project file"}))
+      vim.keymap.set("n", "<localleader>p", M["open-workspace"], vim.tbl_extend("force", opts0, {desc = "Browse workspace"}))
       vim.keymap.set("n", "<localleader>a", M.archive, vim.tbl_extend("force", opts0, {desc = "Archive completed actions"}))
       vim.keymap.set("n", "<localleader>o", M["smart-new-action"], vim.tbl_extend("force", opts0, {desc = "New action below"}))
       vim.keymap.set("n", "<localleader>x", M["set-state"]("x"), vim.tbl_extend("force", opts0, {desc = "Set state to Completed"}))
@@ -543,8 +453,8 @@ M.setup = function(opts)
       return nil
     end
   end
-  vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _79_})
+  vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _64_})
   vim.api.nvim_create_user_command("ClearheadInbox", M["open-inbox"], {})
-  return vim.api.nvim_create_user_command("ClearheadOpenDir", M["open-dir"], {})
+  return vim.api.nvim_create_user_command("ClearheadWorkspace", M["open-workspace"], {})
 end
 return M

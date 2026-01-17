@@ -29,7 +29,6 @@ end
 -- Test default config loading
 local ctx = testing["load-config-internal"]()
 assert_eq(ctx.config.default_file, "inbox.actions", "Default file should be inbox.actions")
-assert_eq(ctx.config.use_project_config, true, "use_project_config should be true by default")
 
 -- Test user options override
 local ctx2 = testing["load-config-internal"]({default_file = "test.actions"})

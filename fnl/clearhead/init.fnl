@@ -4,8 +4,6 @@
 (var config {:data_dir ""
              :config_dir ""
              :default_file "inbox.actions"
-             :project_files ["next.actions"]
-             :use_project_config true
              :nvim_auto_normalize true
              :nvim_format_on_save true
              :nvim_lsp_enable true
@@ -41,8 +39,6 @@
         mappings {:CLEARHEAD_DATA_DIR :data_dir
                   :CLEARHEAD_CONFIG_DIR :config_dir
                   :CLEARHEAD_DEFAULT_FILE :default_file
-                  :CLEARHEAD_PROJECT_FILES :project_files
-                  :CLEARHEAD_USE_PROJECT_CONFIG :use_project_config
                   :CLEARHEAD_NVIM_AUTO_NORMALIZE :nvim_auto_normalize
                   :CLEARHEAD_NVIM_FORMAT_ON_SAVE :nvim_format_on_save
                   :CLEARHEAD_NVIM_LSP_ENABLE :nvim_lsp_enable
@@ -63,36 +59,6 @@
             (tset env-config key parsed-val)))))
     env-config))
 
-(fn discover-project [project-files start-path]
-  "Search upward for a project root"
-  (var current (if (and start-path (not= start-path "")) start-path (vim.fn.getcwd)))
-  (var found nil)
-  (var depth 0)
-  (while (and (not found) (< depth 100))
-    (let [dot-clearhead (.. current :/.clearhead)]
-      (if (= (vim.fn.isdirectory dot-clearhead) 1)
-          (set found {:root current
-                      :config (let [cfg (.. dot-clearhead :/config.json)]
-                                (if (= (vim.fn.filereadable cfg) 1) cfg nil))
-                      :default-file (.. dot-clearhead :/inbox.actions)})
-          (do
-            (each [_ f (ipairs project-files)]
-              (let [f-path (.. current :/ f)]
-                (if (and (not found) (= (vim.fn.filereadable f-path) 1))
-                    (set found {:root current
-                                :config (let [cfg (.. current :/.clearhead/config.json)]
-                                          (if (= (vim.fn.filereadable cfg) 1) cfg nil))
-                                :default-file f-path})))))))
-    (if found
-        nil
-        (let [parent (vim.fn.fnamemodify current ":h")]
-          (if (= parent current)
-              (set depth 100)
-              (do
-                (set current parent)
-                (set depth (+ depth 1)))))))
-  found)
-
 (fn read-json-file [path]
   "Read and decode a JSON file"
   (if (and path (= (vim.fn.filereadable path) 1))
@@ -108,8 +74,6 @@
   (let [defaults {:data_dir ""
                   :config_dir ""
                   :default_file "inbox.actions"
-                  :project_files ["next.actions"]
-                  :use_project_config true
                   :nvim_auto_normalize true
                   :nvim_format_on_save true
                   :nvim_lsp_enable true
@@ -124,20 +88,10 @@
         ;; 1. Merge global config into defaults
         base-config (vim.tbl_extend :force defaults global-config)
 
-        ;; 2. Project discovery (using project_files from combined defaults+global)
-        project-context (if base-config.use_project_config
-                             (discover-project base-config.project_files)
-                             nil)
-
-        ;; 3. Merge project config if found
-        base-config (if (and project-context project-context.config)
-                         (vim.tbl_extend :force base-config (read-json-file project-context.config))
-                         base-config)
-
-        ;; 4. Merge environment variables
+        ;; 2. Merge environment variables
         base-config (vim.tbl_extend :force base-config (load-env))
 
-        ;; 5. Merge user options from setup()
+        ;; 3. Merge user options from setup()
         final-config (if user-opts
                          (vim.tbl_extend :force base-config user-opts)
                          base-config)]
@@ -151,11 +105,10 @@
                                   (get-default-data-dir)
                                   (expand-path final-config.data_dir)))
 
-    {:config final-config :project project-context}))
+    {:config final-config}))
 
 ;; Export for testing
-(set M._testing {:load-config-internal load-config-internal
-                 :discover-project discover-project})
+(set M._testing {:load-config-internal load-config-internal})
 
 ;; State definitions
 (local states {:not-started " "
@@ -389,39 +342,23 @@
   "Open the configured inbox file"
   (let [ctx (load-config-internal)
         cfg ctx.config
-        project ctx.project
         inbox-path (if (and cfg.nvim_inbox_file (not= cfg.nvim_inbox_file ""))
                        (expand-path cfg.nvim_inbox_file)
-                       (if (and project project.default-file)
-                           project.default-file
-                           (let [base (expand-path cfg.data_dir)]
-                             (.. base :/ cfg.default_file))))]
+                       (let [base (expand-path cfg.data_dir)]
+                         (.. base :/ cfg.default_file)))]
     (vim.cmd (.. "edit " inbox-path))))
 
-(fn M.open-dir []
-  "Open the project default file or first .actions file in current directory"
-  (let [project (discover-project config.project_files)]
-    (if (and project project.default-file)
-        (vim.cmd (.. "edit " project.default-file))
-        (let [cwd (vim.fn.getcwd)
-              actions-files (vim.fn.glob (.. cwd :/*.actions) true true)]
-          (if (> (length actions-files) 0)
-              (vim.cmd (.. "edit " (. actions-files 1)))
-              (vim.notify "No .actions file found in current directory"
-                          vim.log.levels.WARN))))))
+(fn M.open-workspace []
+  "Open the workspace directory for browsing action files"
+  (let [workspace (expand-path config.data_dir)]
+    (vim.cmd (.. "edit " workspace))))
 
 (fn M.attach-lsp [bufnr]
   "Attach the Language Server to a specific buffer"
   (let [bin (get-bin-path)]
     (when (and config.nvim_lsp_enable bin)
-      (let [filename (vim.api.nvim_buf_get_name bufnr)
-            start-path (if (and filename (not= filename ""))
-                           (vim.fn.fnamemodify filename ":p:h")
-                           (vim.fn.getcwd))
-            project (discover-project config.project_files start-path)
-            root (or (and project project.root)
-                     start-path
-                     (vim.fn.getcwd))]
+      ;; Use global data directory as LSP root (configurable via config.data_dir)
+      (let [root (expand-path config.data_dir)]
         (vim.lsp.start {:name :clearhead-lsp
                         :cmd [bin :lsp]
                         :root_dir root} {:bufnr bufnr})))))
@@ -468,7 +405,7 @@
                                                   (vim.keymap.set :n :<localleader><space> M.cycle-state (vim.tbl_extend :force opts {:desc "Cycle action state"}))
                                                   (vim.keymap.set :n :<localleader>f M.format (vim.tbl_extend :force opts {:desc "Format action file"}))
                                                   (vim.keymap.set :n :<localleader>i M.open-inbox (vim.tbl_extend :force opts {:desc "Open inbox"}))
-                                                  (vim.keymap.set :n :<localleader>p M.open-dir (vim.tbl_extend :force opts {:desc "Open project file"}))
+                                                  (vim.keymap.set :n :<localleader>p M.open-workspace (vim.tbl_extend :force opts {:desc "Browse workspace"}))
                                                   (vim.keymap.set :n :<localleader>a M.archive (vim.tbl_extend :force opts {:desc "Archive completed actions"}))
                                                   (vim.keymap.set :n :<localleader>o M.smart-new-action (vim.tbl_extend :force opts {:desc "New action below"}))
                                                   ;; Specific state mappings
@@ -478,6 +415,6 @@
                                                   (vim.keymap.set :n :<localleader>_ (M.set-state :_) (vim.tbl_extend :force opts {:desc "Set state to Cancelled"})))))})
     ;; Create user commands
     (vim.api.nvim_create_user_command :ClearheadInbox M.open-inbox {})
-    (vim.api.nvim_create_user_command :ClearheadOpenDir M.open-dir {})))
+    (vim.api.nvim_create_user_command :ClearheadWorkspace M.open-workspace {})))
 
 M
