@@ -3,7 +3,7 @@
 ;; Internal state for the loaded configuration
 (var config {:data_dir ""
              :config_dir ""
-             :default_file "inbox.actions"
+             :default_file :inbox.actions
              :nvim_auto_normalize true
              :nvim_format_on_save true
              :nvim_lsp_enable true
@@ -73,42 +73,37 @@
   "Load configuration from all sources with proper precedence"
   (let [defaults {:data_dir ""
                   :config_dir ""
-                  :default_file "inbox.actions"
+                  :default_file :inbox.actions
                   :nvim_auto_normalize true
                   :nvim_format_on_save true
                   :nvim_lsp_enable true
                   :nvim_inbox_file ""
                   :nvim_lsp_binary_path ""
                   :nvim_default_mappings true}
-
         global-config-dir (get-default-config-dir)
         global-config-path (.. global-config-dir :/config.json)
         global-config (read-json-file global-config-path)
-
         ;; 1. Merge global config into defaults
         base-config (vim.tbl_extend :force defaults global-config)
-
         ;; 2. Merge environment variables
         base-config (vim.tbl_extend :force base-config (load-env))
-
         ;; 3. Merge user options from setup()
         final-config (if user-opts
                          (vim.tbl_extend :force base-config user-opts)
                          base-config)]
-
     ;; Resolve core directories
-    (set final-config.config_dir (if (or (= final-config.config_dir "") (not final-config.config_dir))
-                                    global-config-dir
-                                    (expand-path final-config.config_dir)))
-
-    (set final-config.data_dir (if (or (= final-config.data_dir "") (not final-config.data_dir))
-                                  (get-default-data-dir)
-                                  (expand-path final-config.data_dir)))
-
+    (set final-config.config_dir
+         (if (or (= final-config.config_dir "") (not final-config.config_dir))
+             global-config-dir
+             (expand-path final-config.config_dir)))
+    (set final-config.data_dir
+         (if (or (= final-config.data_dir "") (not final-config.data_dir))
+             (get-default-data-dir)
+             (expand-path final-config.data_dir)))
     {:config final-config}))
 
 ;; Export for testing
-(set M._testing {:load-config-internal load-config-internal})
+(set M._testing {: load-config-internal})
 
 ;; State definitions
 (local states {:not-started " "
@@ -128,7 +123,7 @@
               tree (. (parser:parse) 1)
               root (tree:root)
               query (vim.treesitter.query.parse :actions
-                      "((state [
+                                                "((state [
                          (state_not_started)
                          (state_completed)
                          (state_in_progress)
@@ -193,7 +188,7 @@
               tree (. (parser:parse) 1)
               root (tree:root)
               query (vim.treesitter.query.parse :actions
-                      "((state [
+                                                "((state [
                          (state_not_started)
                          (state_completed)
                          (state_in_progress)
@@ -207,15 +202,13 @@
             (when (= (vim.treesitter.get_node_text node bufnr) :x)
               (set completed (+ completed 1))))
           (if (> total 0)
-              (.. "✓ " completed "/" total)
-              ""))
+              (.. "✓ " completed "/" total) ""))
         "")))
 
 (fn M.smart-new-action []
   "Create a new action line below, inheriting depth and markers using Tree-sitter"
   (let [bufnr (vim.api.nvim_get_current_buf)
-        linenr (- (vim.fn.line ".") 1)
-        ;; captures current action node
+        linenr (- (vim.fn.line ".") 1) ;; captures current action node
         parser (vim.treesitter.get_parser bufnr :actions)
         tree (. (parser:parse) 1)
         root (tree:root)
@@ -231,11 +224,11 @@
               (set depth-markers markers)
               (set current nil)) ; stop
             (set current (current:parent)))))
-
     (let [line (vim.fn.getline (+ linenr 1))
           indent (line:match "^(%s*)")
           now (vim.fn.strftime "%Y-%m-%dT%H:%M")
-          prefix (.. indent depth-markers (if (> (length depth-markers) 0) " " ""))]
+          prefix (.. indent depth-markers
+                     (if (> (length depth-markers) 0) " " ""))]
       (vim.fn.append (+ linenr 1) (.. prefix "[ ]  ^" now))
       (vim.fn.cursor (+ linenr 2) (+ (length (.. prefix "[ ] ")) 1))
       (vim.cmd :startinsert!))))
@@ -263,11 +256,11 @@
         (let [client (. clients 1)
               uri (vim.uri_from_bufnr bufnr)]
           (client.request :workspace/executeCommand
-                          {:command :clearhead/archive
-                           :arguments [uri]}
+                          {:command :clearhead/archive :arguments [uri]}
                           (fn [err result]
                             (when err
-                              (vim.notify (.. "LSP Archive failed: " err.message)
+                              (vim.notify (.. "LSP Archive failed: "
+                                              err.message)
                                           vim.log.levels.ERROR)))))
         ;; Fallback to CLI job
         (let [filename (vim.api.nvim_buf_get_name bufnr)
@@ -282,17 +275,25 @@
                                                    (vim.schedule (fn []
                                                                    (vim.api.nvim_command :edit!)
                                                                    (vim.notify "Archived completed actions."))))
-                                                 (vim.notify "Archive failed." vim.log.levels.ERROR)))
+                                                 (vim.notify "Archive failed."
+                                                             vim.log.levels.ERROR)))
                                   :on_stdout (fn [_ data]
-                                               (when (and data (> (length data) 0))
-                                                 (let [msg (table.concat data "\n")]
-                                                   (when (and (not= msg "") (not (msg:find "^%s*$")))
+                                               (when (and data
+                                                          (> (length data) 0))
+                                                 (let [msg (table.concat data
+                                                                         "\n")]
+                                                   (when (and (not= msg "")
+                                                              (not (msg:find "^%s*$")))
                                                      (vim.notify msg)))))
                                   :on_stderr (fn [_ data]
-                                               (when (and data (> (length data) 0))
-                                                 (let [msg (table.concat data "\n")]
-                                                   (when (and (not= msg "") (not (msg:find "^%s*$")))
-                                                     (vim.notify (.. "Archive error: " msg)
+                                               (when (and data
+                                                          (> (length data) 0))
+                                                 (let [msg (table.concat data
+                                                                         "\n")]
+                                                   (when (and (not= msg "")
+                                                              (not (msg:find "^%s*$")))
+                                                     (vim.notify (.. "Archive error: "
+                                                                     msg)
                                                                  vim.log.levels.ERROR)))))}))
               (vim.notify "Cannot archive: buffer has no file or CLI not found."
                           vim.log.levels.ERROR))))))
@@ -327,7 +328,9 @@
           (if (> (length all-clients) 0)
               (do
                 (M.attach-lsp bufnr)
-                (vim.schedule (fn [] (vim.lsp.buf.format {:name :clearhead-lsp : bufnr}))))
+                (vim.schedule (fn []
+                                (vim.lsp.buf.format {:name :clearhead-lsp
+                                                     : bufnr}))))
               (when config.nvim_auto_normalize
                 (M.normalize bufnr)))))))
 
@@ -345,7 +348,7 @@
         inbox-path (if (and cfg.nvim_inbox_file (not= cfg.nvim_inbox_file ""))
                        (expand-path cfg.nvim_inbox_file)
                        (let [base (expand-path cfg.data_dir)]
-                         (.. base :/ cfg.default_file)))]
+                         (.. base "/" cfg.default_file)))]
     (vim.cmd (.. "edit " inbox-path))))
 
 (fn M.open-workspace []
@@ -359,9 +362,8 @@
     (when (and config.nvim_lsp_enable bin)
       ;; Use global data directory as LSP root (configurable via config.data_dir)
       (let [root (expand-path config.data_dir)]
-        (vim.lsp.start {:name :clearhead-lsp
-                        :cmd [bin :lsp]
-                        :root_dir root} {:bufnr bufnr})))))
+        (vim.lsp.start {:name :clearhead-lsp :cmd [bin :lsp] :root_dir root}
+                       {: bufnr})))))
 
 (fn M.setup-lsp [group]
   "Setup the Language Server for .actions files"
@@ -380,7 +382,6 @@
   ;; Load configuration from all sources
   (let [ctx (load-config-internal opts)]
     (set config ctx.config))
-
   (let [group (vim.api.nvim_create_augroup :clearhead {:clear true})]
     ;; Setup LSP
     (M.setup-lsp group)
@@ -390,11 +391,31 @@
                                    {:pattern :*.actions
                                     : group
                                     :callback (fn [] (M.format))}))
+    ;; Auto-read external changes
+    (vim.api.nvim_create_autocmd [:FocusGained
+                                  :BufEnter
+                                  :CursorHold
+                                  :CursorHoldI]
+                                 {:pattern :*.actions
+                                  : group
+                                  :callback (fn []
+                                              (when (and (= (vim.fn.mode) :n)
+                                                         (not= (vim.fn.bufname)
+                                                               ""))
+                                                (vim.cmd :checktime)))})
+    ;; Notify on silent reload
+    (vim.api.nvim_create_autocmd :FileChangedShellPost
+                                 {:pattern :*.actions
+                                  : group
+                                  :callback (fn []
+                                              (vim.notify "File updated from disk."
+                                                          vim.log.levels.INFO))})
     ;; Set buffer-local settings and mappings for actions files
     (vim.api.nvim_create_autocmd :FileType
                                  {:pattern :actions
                                   : group
                                   :callback (fn [args]
+                                              (set vim.opt_local.autoread true)
                                               (set vim.opt_local.conceallevel 2)
                                               (set vim.opt_local.concealcursor
                                                    :nc)
@@ -402,19 +423,72 @@
                                               (M.attach-lsp args.buf)
                                               (when config.nvim_default_mappings
                                                 (let [opts {:buffer true}]
-                                                  (vim.keymap.set :n :<localleader><space> M.cycle-state (vim.tbl_extend :force opts {:desc "Cycle action state"}))
-                                                  (vim.keymap.set :n :<localleader>f M.format (vim.tbl_extend :force opts {:desc "Format action file"}))
-                                                  (vim.keymap.set :n :<localleader>i M.open-inbox (vim.tbl_extend :force opts {:desc "Open inbox"}))
-                                                  (vim.keymap.set :n :<localleader>p M.open-workspace (vim.tbl_extend :force opts {:desc "Browse workspace"}))
-                                                  (vim.keymap.set :n :<localleader>a M.archive (vim.tbl_extend :force opts {:desc "Archive completed actions"}))
-                                                  (vim.keymap.set :n :<localleader>o M.smart-new-action (vim.tbl_extend :force opts {:desc "New action below"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader><space>
+                                                                  M.cycle-state
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Cycle action state"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>f
+                                                                  M.format
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Format action file"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>i
+                                                                  M.open-inbox
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Open inbox"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>p
+                                                                  M.open-workspace
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Browse workspace"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>a
+                                                                  M.archive
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Archive completed actions"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>o
+                                                                  M.smart-new-action
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "New action below"}))
                                                   ;; Specific state mappings
-                                                  (vim.keymap.set :n :<localleader>x (M.set-state :x) (vim.tbl_extend :force opts {:desc "Set state to Completed"}))
-                                                  (vim.keymap.set :n :<localleader>- (M.set-state :-) (vim.tbl_extend :force opts {:desc "Set state to In Progress"}))
-                                                  (vim.keymap.set :n :<localleader>= (M.set-state :=) (vim.tbl_extend :force opts {:desc "Set state to Blocked"}))
-                                                  (vim.keymap.set :n :<localleader>_ (M.set-state :_) (vim.tbl_extend :force opts {:desc "Set state to Cancelled"})))))})
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>x
+                                                                  (M.set-state :x)
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Set state to Completed"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>-
+                                                                  (M.set-state "-")
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Set state to In Progress"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>=
+                                                                  (M.set-state "=")
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Set state to Blocked"}))
+                                                  (vim.keymap.set :n
+                                                                  :<localleader>_
+                                                                  (M.set-state "_")
+                                                                  (vim.tbl_extend :force
+                                                                                  opts
+                                                                                  {:desc "Set state to Cancelled"})))))})
     ;; Create user commands
     (vim.api.nvim_create_user_command :ClearheadInbox M.open-inbox {})
-    (vim.api.nvim_create_user_command :ClearheadWorkspace M.open-workspace {})))
+    (vim.api.nvim_create_user_command :ClearheadWorkspace M.open-workspace {})
+    (vim.api.nvim_create_user_command :ClearheadDiff
+                                      (fn [] (vim.cmd "vertical diffsplit %"))
+                                      {})))
 
 M

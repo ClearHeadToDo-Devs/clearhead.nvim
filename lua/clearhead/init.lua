@@ -1,3 +1,4 @@
+-- [nfnl] fnl/clearhead/init.fnl
 local M = {}
 local config = {data_dir = "", config_dir = "", default_file = "inbox.actions", nvim_auto_normalize = true, nvim_format_on_save = true, nvim_lsp_enable = true, nvim_inbox_file = "", nvim_lsp_binary_path = "", nvim_default_mappings = true}
 local function expand_path(path)
@@ -433,7 +434,20 @@ M.setup = function(opts)
     vim.api.nvim_create_autocmd("BufWritePre", {pattern = "*.actions", group = group, callback = _62_})
   else
   end
-  local function _64_(args)
+  local function _64_()
+    if ((vim.fn.mode() == "n") and (vim.fn.bufname() ~= "")) then
+      return vim.cmd("checktime")
+    else
+      return nil
+    end
+  end
+  vim.api.nvim_create_autocmd({"FocusGained", "BufEnter", "CursorHold", "CursorHoldI"}, {pattern = "*.actions", group = group, callback = _64_})
+  local function _66_()
+    return vim.notify("File updated from disk.", vim.log.levels.INFO)
+  end
+  vim.api.nvim_create_autocmd("FileChangedShellPost", {pattern = "*.actions", group = group, callback = _66_})
+  local function _67_(args)
+    vim.opt_local.autoread = true
     vim.opt_local.conceallevel = 2
     vim.opt_local.concealcursor = "nc"
     M["attach-lsp"](args.buf)
@@ -453,8 +467,12 @@ M.setup = function(opts)
       return nil
     end
   end
-  vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _64_})
+  vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _67_})
   vim.api.nvim_create_user_command("ClearheadInbox", M["open-inbox"], {})
-  return vim.api.nvim_create_user_command("ClearheadWorkspace", M["open-workspace"], {})
+  vim.api.nvim_create_user_command("ClearheadWorkspace", M["open-workspace"], {})
+  local function _69_()
+    return vim.cmd("vertical diffsplit %")
+  end
+  return vim.api.nvim_create_user_command("ClearheadDiff", _69_, {})
 end
 return M
