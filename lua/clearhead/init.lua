@@ -1,4 +1,3 @@
--- [nfnl] fnl/clearhead/init.fnl
 local M = {}
 local config = {data_dir = "", config_dir = "", default_file = "inbox.actions", nvim_auto_normalize = true, nvim_format_on_save = true, nvim_lsp_enable = true, nvim_inbox_file = "", nvim_lsp_binary_path = "", nvim_default_mappings = true}
 local function expand_path(path)
@@ -377,6 +376,24 @@ M.format = function()
     end
   end
 end
+M["force-sync"] = function()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local clients = vim.lsp.get_clients({name = "clearhead-lsp", bufnr = bufnr})
+  if (#clients > 0) then
+    local client = clients[1]
+    local uri = vim.uri_from_bufnr(bufnr)
+    local function _57_(err, result)
+      if err then
+        return vim.notify(("Force sync failed: " .. err.message), vim.log.levels.ERROR)
+      else
+        return nil
+      end
+    end
+    return client.request("workspace/executeCommand", {command = "clearhead/forceSync", arguments = {uri}}, _57_)
+  else
+    return vim.notify("LSP not attached. Cannot force sync.", vim.log.levels.ERROR)
+  end
+end
 M["get-conform-opts"] = function()
   return {formatters_by_ft = {actions = {"clearhead_cli"}}, formatters = {clearhead_cli = {command = "clearhead_cli", args = {"format", "$FILENAME"}, stdin = false}}}
 end
@@ -408,10 +425,10 @@ end
 M["setup-lsp"] = function(group)
   local bin = get_bin_path()
   if (config.nvim_lsp_enable and bin) then
-    local function _59_(args)
+    local function _62_(args)
       return M["attach-lsp"](args.buf)
     end
-    return vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _59_})
+    return vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _62_})
   else
     if (config.nvim_lsp_enable and not bin) then
       return vim.notify("clearhead_cli binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.", vim.log.levels.WARN)
@@ -428,25 +445,25 @@ M.setup = function(opts)
   local group = vim.api.nvim_create_augroup("clearhead", {clear = true})
   M["setup-lsp"](group)
   if config.nvim_format_on_save then
-    local function _62_()
+    local function _65_()
       return M.format()
     end
-    vim.api.nvim_create_autocmd("BufWritePre", {pattern = "*.actions", group = group, callback = _62_})
+    vim.api.nvim_create_autocmd("BufWritePre", {pattern = "*.actions", group = group, callback = _65_})
   else
   end
-  local function _64_()
+  local function _67_()
     if ((vim.fn.mode() == "n") and (vim.fn.bufname() ~= "")) then
       return vim.cmd("checktime")
     else
       return nil
     end
   end
-  vim.api.nvim_create_autocmd({"FocusGained", "BufEnter", "CursorHold", "CursorHoldI"}, {pattern = "*.actions", group = group, callback = _64_})
-  local function _66_()
+  vim.api.nvim_create_autocmd({"FocusGained", "BufEnter", "CursorHold", "CursorHoldI"}, {pattern = "*.actions", group = group, callback = _67_})
+  local function _69_()
     return vim.notify("File updated from disk.", vim.log.levels.INFO)
   end
-  vim.api.nvim_create_autocmd("FileChangedShellPost", {pattern = "*.actions", group = group, callback = _66_})
-  local function _67_(args)
+  vim.api.nvim_create_autocmd("FileChangedShellPost", {pattern = "*.actions", group = group, callback = _69_})
+  local function _70_(args)
     vim.opt_local.autoread = true
     vim.opt_local.conceallevel = 2
     vim.opt_local.concealcursor = "nc"
@@ -467,12 +484,13 @@ M.setup = function(opts)
       return nil
     end
   end
-  vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _67_})
+  vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _70_})
   vim.api.nvim_create_user_command("ClearheadInbox", M["open-inbox"], {})
   vim.api.nvim_create_user_command("ClearheadWorkspace", M["open-workspace"], {})
-  local function _69_()
+  vim.api.nvim_create_user_command("ClearheadForceSync", M["force-sync"], {})
+  local function _72_()
     return vim.cmd("vertical diffsplit %")
   end
-  return vim.api.nvim_create_user_command("ClearheadDiff", _69_, {})
+  return vim.api.nvim_create_user_command("ClearheadDiff", _72_, {})
 end
 return M
