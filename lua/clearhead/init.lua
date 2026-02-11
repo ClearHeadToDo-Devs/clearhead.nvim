@@ -316,7 +316,7 @@ M.archive = function()
           return nil
         end
       end
-      return vim.fn.jobstart({bin, "archive", filename}, {on_exit = _35_, on_stdout = _38_, on_stderr = _41_})
+      return vim.fn.jobstart({bin, "archive", "plans", filename}, {on_exit = _35_, on_stdout = _38_, on_stderr = _41_})
     else
       return vim.notify("Cannot archive: buffer has no file or CLI not found.", vim.log.levels.ERROR)
     end
@@ -348,7 +348,7 @@ M.normalize = function(bufnr)
         return nil
       end
     end
-    vim.fn.jobstart({bin, "normalize", filename, "--write"}, {on_exit = _46_, on_stderr = _49_})
+    vim.fn.jobstart({bin, "normalize", "file", filename, "--write"}, {on_exit = _46_, on_stderr = _49_})
     return nil
   else
     return nil
@@ -395,7 +395,7 @@ M["force-sync"] = function()
   end
 end
 M["get-conform-opts"] = function()
-  return {formatters_by_ft = {actions = {"clearhead_cli"}}, formatters = {clearhead_cli = {command = "clearhead_cli", args = {"format", "$FILENAME"}, stdin = false}}}
+  return {formatters_by_ft = {actions = {"clearhead_cli"}}, formatters = {clearhead_cli = {command = "clearhead_cli", args = {"format", "file", "$FILENAME"}, stdin = false}}}
 end
 M["open-inbox"] = function()
   local ctx = load_config_internal()
@@ -417,7 +417,7 @@ M["attach-lsp"] = function(bufnr)
   local bin = get_bin_path()
   if (config.nvim_lsp_enable and bin) then
     local root = expand_path(config.data_dir)
-    return vim.lsp.start({name = "clearhead-lsp", cmd = {bin, "lsp"}, root_dir = root}, {bufnr = bufnr})
+    return vim.lsp.start({name = "clearhead-lsp", cmd = {bin, "start", "lsp"}, root_dir = root}, {bufnr = bufnr})
   else
     return nil
   end

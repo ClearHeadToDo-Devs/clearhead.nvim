@@ -268,7 +268,7 @@
           (if (and (not= filename "") bin)
               (do
                 (vim.cmd :write)
-                (vim.fn.jobstart [bin :archive filename]
+                (vim.fn.jobstart [bin :archive :plans filename]
                                  {:on_exit (fn [_ exit-code]
                                              (if (= exit-code 0)
                                                  (do
@@ -303,7 +303,7 @@
   (let [filename (vim.api.nvim_buf_get_name bufnr)
         bin (get-bin-path)]
     (when (and (not= filename "") bin)
-      (vim.fn.jobstart [bin :normalize filename :--write]
+      (vim.fn.jobstart [bin :normalize :file filename :--write]
                        {:on_exit (fn [_ exit-code]
                                    (when (= exit-code 0)
                                      ;; Reload the buffer to see the new IDs
@@ -353,7 +353,7 @@
   "Returns configuration for conform.nvim"
   {:formatters_by_ft {:actions [:clearhead_cli]}
    :formatters {:clearhead_cli {:command :clearhead_cli
-                                :args [:format :$FILENAME]
+                                :args [:format :file :$FILENAME]
                                 :stdin false}}})
 
 (fn M.open-inbox []
@@ -377,7 +377,7 @@
     (when (and config.nvim_lsp_enable bin)
       ;; Use global data directory as LSP root (configurable via config.data_dir)
       (let [root (expand-path config.data_dir)]
-        (vim.lsp.start {:name :clearhead-lsp :cmd [bin :lsp] :root_dir root}
+        (vim.lsp.start {:name :clearhead-lsp :cmd [bin :start :lsp] :root_dir root}
                        {: bufnr})))))
 
 (fn M.setup-lsp [group]
