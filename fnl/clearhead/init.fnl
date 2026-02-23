@@ -334,21 +334,6 @@
               (when config.nvim_auto_normalize
                 (M.normalize bufnr)))))))
 
-(fn M.force-sync []
-  "Force overwrite buffer with CRDT state (workspace files only)"
-  (let [bufnr (vim.api.nvim_get_current_buf)
-        clients (vim.lsp.get_clients {:name :clearhead-lsp : bufnr})]
-    (if (> (length clients) 0)
-        (let [client (. clients 1)
-              uri (vim.uri_from_bufnr bufnr)]
-          (client.request :workspace/executeCommand
-                          {:command :clearhead/forceSync :arguments [uri]}
-                          (fn [err result]
-                            (when err
-                              (vim.notify (.. "Force sync failed: " err.message)
-                                          vim.log.levels.ERROR)))))
-        (vim.notify "LSP not attached. Cannot force sync." vim.log.levels.ERROR))))
-
 (fn M.get-conform-opts []
   "Returns configuration for conform.nvim"
   {:formatters_by_ft {:actions [:clearhead_cli]}
@@ -502,7 +487,6 @@
     ;; Create user commands
     (vim.api.nvim_create_user_command :ClearheadInbox M.open-inbox {})
     (vim.api.nvim_create_user_command :ClearheadWorkspace M.open-workspace {})
-    (vim.api.nvim_create_user_command :ClearheadForceSync M.force-sync {})
     (vim.api.nvim_create_user_command :ClearheadDiff
                                       (fn [] (vim.cmd "vertical diffsplit %"))
                                       {})))

@@ -376,24 +376,6 @@ M.format = function()
     end
   end
 end
-M["force-sync"] = function()
-  local bufnr = vim.api.nvim_get_current_buf()
-  local clients = vim.lsp.get_clients({name = "clearhead-lsp", bufnr = bufnr})
-  if (#clients > 0) then
-    local client = clients[1]
-    local uri = vim.uri_from_bufnr(bufnr)
-    local function _57_(err, result)
-      if err then
-        return vim.notify(("Force sync failed: " .. err.message), vim.log.levels.ERROR)
-      else
-        return nil
-      end
-    end
-    return client.request("workspace/executeCommand", {command = "clearhead/forceSync", arguments = {uri}}, _57_)
-  else
-    return vim.notify("LSP not attached. Cannot force sync.", vim.log.levels.ERROR)
-  end
-end
 M["get-conform-opts"] = function()
   return {formatters_by_ft = {actions = {"clearhead_cli"}}, formatters = {clearhead_cli = {command = "clearhead_cli", args = {"format", "file", "$FILENAME"}, stdin = false}}}
 end
@@ -487,7 +469,6 @@ M.setup = function(opts)
   vim.api.nvim_create_autocmd("FileType", {pattern = "actions", group = group, callback = _70_})
   vim.api.nvim_create_user_command("ClearheadInbox", M["open-inbox"], {})
   vim.api.nvim_create_user_command("ClearheadWorkspace", M["open-workspace"], {})
-  vim.api.nvim_create_user_command("ClearheadForceSync", M["force-sync"], {})
   local function _72_()
     return vim.cmd("vertical diffsplit %")
   end
