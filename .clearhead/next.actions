@@ -1,0 +1,4 @@
+[ ] Create hotkey to go to inbox  $ we have one just need to make sure it actually works BEFORE we go into the inbox $ ^2026-02-08T11:40 #019c3ec5-43ae-7a13-a651-117bf3425ee3
+[ ] update smart-new-action to include a UUID  $ we determined in a chat session that this is the easiest way to start our plans off on a good footing with a UUID at birth rather than after saving $ ^2026-03-24T22:12 #019d2368-9086-7bd1-9894-e5a4cef4085d
+[ ] remove normalize as the silent save fallback  $ in the spirit of making the system more coherent we are going to use the LSP, and the above format to track ids and make the normalize command more explicit rather than as a side effect of formatting $ ^2026-03-24T22:13 #019d2369-78d5-7101-abd7-37ac4aa5e7d3
+[ ] go over what the LSP does and doesnt provide  $ we want to be clear about what the LSP provides since this is a bit of a strange format overall $ +documentation  ^2026-03-24T22:15 #019d236b-144e-7860-abb4-f4876f20b445

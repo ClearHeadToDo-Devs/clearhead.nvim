@@ -1,0 +1,5 @@
+<urn:uuid:258b79ce-c9e3-5d57-8076-558079a2b538> <https://clearhead.us/vocab/actions/v4#createdAt> "2026-02-08T11:40:00-08:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+	<https://www.commoncoreontologies.org/ont00001868> <https://clearhead.us/vocab/actions/v4#NotStarted> ;
+	<https://clearhead.us/vocab/actions/v4#prescribedBy> <urn:uuid:019c3ec5-43ae-7a13-a651-117bf3425ee3> ;
+	<https://clearhead.us/vocab/actions/v4#id> "258b79ce-c9e3-5d57-8076-558079a2b538" ;
+	a <https://www.commoncoreontologies.org/ont00000228> .
