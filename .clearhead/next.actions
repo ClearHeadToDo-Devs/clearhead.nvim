@@ -4,3 +4,7 @@
 [ ] go over what the LSP does and doesnt provide  $ we want to be clear about what the LSP provides since this is a bit of a strange format overall $ +documentation  ^2026-03-24T22:15 #019d236b-144e-7860-abb4-f4876f20b445
 [ ] move from fennel to lua for simplicity  ^2026-04-11T15:00 #019d7e8f-6f17-7112-b818-2fa5693c3a76
 [ ] get something where we are able do a query and actually find actions that have simple queries like priority and date  ^2026-04-11T15:00 #019d7e8f-c159-7be3-b3fe-f07dc10f9b1d
+[ ] add template workflow commands  $ Decision 21 introduces templates/; surface them through keybindings so the calendar+template model is first-class in the editor $ ^2026-04-20T00:00 #019db400-0001-7000-0000-000000000001
+        >[ ] add :ClearheadExpandActs command  $ invoke CLI expand acts for current charter; reload buffer on success; show act count added in notification $ ^2026-04-20T00:00 #019db400-0002-7000-0000-000000000001
+        >[ ] add :ClearheadApplyTemplate picker  $ telescope picker over templates/ for current charter scope; select template → append generated acts into current buffer $ ^2026-04-20T00:00 #019db400-0003-7000-0000-000000000001
+        >[ ] update smart-new-action to not emit RRULE  $ post-Decision-21 the smart-new-action snippet should not offer a recurrence field; recurring acts are created via expand acts from a schedule $ ^2026-04-20T00:00 #019db400-0004-7000-0000-000000000001
