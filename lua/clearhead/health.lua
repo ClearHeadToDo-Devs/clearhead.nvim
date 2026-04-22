@@ -1,8 +1,8 @@
+local config = require("clearhead.config")
+
 local M = {}
 
--- Forward declarations
 local check_neovim, check_cli, check_treesitter, check_config
-local find_cli_binary
 
 -- =============================================================================
 -- Public API
@@ -30,7 +30,7 @@ end
 
 check_cli = function()
   vim.health.start("clearhead: CLI binary")
-  local bin = find_cli_binary()
+  local bin = config.get_bin_path()
   if not bin then
     vim.health.error(
       "clearhead_cli not found",
@@ -88,7 +88,7 @@ check_config = function()
 
   -- LSP
   if cfg.nvim_lsp_enable then
-    local bin = find_cli_binary()
+    local bin = config.get_bin_path()
     if bin then
       vim.health.ok("LSP enabled and binary found")
     else
@@ -100,16 +100,6 @@ check_config = function()
   else
     vim.health.info("LSP disabled (nvim_lsp_enable = false)")
   end
-end
-
--- =============================================================================
--- Helpers
--- =============================================================================
-
-find_cli_binary = function()
-  if vim.fn.executable("clearhead_cli") == 1 then return "clearhead_cli" end
-  local cargo_bin = vim.fn.expand("~") .. "/.cargo/bin/clearhead_cli"
-  return vim.fn.executable(cargo_bin) == 1 and cargo_bin or nil
 end
 
 return M

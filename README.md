@@ -9,6 +9,32 @@ Now, you are interesting because this is orthogonal to the [CLI](https://github.
 - **LSP Integration**: Diagnostics, code actions (Hydrate Action), and inlay hints.
 - providing an interface to update and edit filtered action files and sync those back
 
+## LSP Capabilities
+
+The `clearhead-lsp` server (bundled in `clearhead_cli`) provides the following to any editor that speaks LSP:
+
+| Capability | What it does |
+|---|---|
+| **Completion** (`@`, `%`, `^`) | Date snippets: now, today, tomorrow |
+| **Code Actions** | Hydrate UUID, set completion date, set/derive creation date |
+| **Semantic Tokens** | Highlighting for id, priority, state, name, description, story, context, dates |
+| **Inlay Hints** | Due-date countdown ("due in 3d", "due today") and completion age ("done 5d ago") |
+| **Go to Definition** | Jump to first occurrence of a story or context tag |
+| **Find References** | List all occurrences of a story or context tag |
+| **Document Formatting** | Normalizes the file: adds missing UUIDs, fixes spacing, reindents |
+| **Diagnostics** | Linting warnings (missing UUID, invalid dates) on every change |
+| **Execute Command** | `clearhead/archive` — archives completed action trees via `workspace/applyEdit` |
+| **Telemetry** (on save) | Diffs saved state to emit action lifecycle events |
+
+### What stays in the plugin
+
+These operations run locally for responsiveness — no LSP roundtrip:
+
+- **State cycling** — tree-sitter finds and replaces the state character directly
+- **Smart new action** — inserts a line with correct depth and creation date; UUID added by format-on-save
+- **Status line** — counts completed/total via tree-sitter query
+- **Completion date stamp** — appends `%<timestamp>` when state is set to completed
+
 ## Configuration
 
 ClearHead follows a standard [Configuration Specification](https://github.com/ClearHeadToDo-Devs/specifications/blob/main/configuration_specification.md) across all its tools. It uses JSON for global config and supports environment variable overrides.
@@ -97,7 +123,7 @@ require('conform').setup({
 
 `clearhead.nvim` is designed as a **Thin Client**. 
 
-1. **LSP-First**: Business logic (like archiving, linting, or complex formatting) should live in the Rust CLI/LSP, not in Fennel. 
+1. **LSP-First**: Business logic (like archiving, linting, or complex formatting) should live in the Rust CLI/LSP, not in Lua. 
 2. **Commands over Shell**: Prefer calling LSP commands (`workspace/executeCommand`) instead of spawning shell jobs with `jobstart`. This allows the LSP to return `WorkspaceEdit` objects, providing a smoother experience without buffer reloads.
 3. **AST in Rust**: While Tree-sitter is available in Neovim, complex AST manipulations are preferred in the Rust LSP to ensure portability to other editors (VSCode, Zed, etc.).
 
