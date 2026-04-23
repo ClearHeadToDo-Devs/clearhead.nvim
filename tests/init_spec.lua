@@ -6,24 +6,57 @@ describe("clearhead", function()
   local clearhead = require('clearhead')
 
   it("should load default configuration", function()
-    -- We can't easily call setup() in a headless test without a full environment,
-    -- but we can test the internal loader we exported.
-    local ctx = clearhead._testing.load-config-internal()
+    local ctx = clearhead._testing["load-config-internal"]()
     assert.are.equal("inbox.actions", ctx.config.default_file)
   end)
 
-  it("should provide status string", function()
-    -- Mock a buffer with some actions
-    vim.api.nvim_buf_set_lines(0, 0, -1, false, {
+  it("should provide status string for a buffer", function()
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
       "[x] Done",
       "[ ] Not Done",
-      "> [ ] Child"
     })
-    vim.bo.filetype = "actions"
-    
-    -- Wait for treesitter to parse if possible, or just check the logic
-    -- Note: Headless treesitter testing is advanced, but this is the right place for it.
-    local status = clearhead.get_status()
+    vim.bo[bufnr].filetype = "actions"
+
+    local status = clearhead.get_status(bufnr)
     assert.is_not_nil(status)
+    -- Without a live treesitter parser in headless mode the parser may not be
+    -- available; we just assert the function returns a string without error.
+    assert.is_string(status)
+  end)
+
+  it("set_state should not touch other buffers", function()
+    -- Create a decoy buffer to ensure set_state targets only the given bufnr.
+    local decoy = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(decoy, 0, -1, false, { "[ ] Decoy action" })
+
+    local target = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(target, 0, -1, false, { "[ ] Target action" })
+    vim.bo[target].filetype = "actions"
+
+    -- We can't assert treesitter state without the parser, but we can assert
+    -- that calling set_state with an explicit bufnr does not modify the decoy.
+    -- (A notifier warn is expected when parser is absent; that is acceptable.)
+    clearhead.set_state(target, 0, "x")
+
+    local decoy_lines = vim.api.nvim_buf_get_lines(decoy, 0, -1, false)
+    assert.are.equal("[ ] Decoy action", decoy_lines[1])
+  end)
+
+  it("set_state_tree should not touch other buffers", function()
+    local decoy = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(decoy, 0, -1, false, { "[ ] Decoy action" })
+
+    local target = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(target, 0, -1, false, {
+      "[ ] Parent",
+      ">[ ] Child",
+    })
+    vim.bo[target].filetype = "actions"
+
+    clearhead.set_state_tree(target, 0, "x")
+
+    local decoy_lines = vim.api.nvim_buf_get_lines(decoy, 0, -1, false)
+    assert.are.equal("[ ] Decoy action", decoy_lines[1])
   end)
 end)

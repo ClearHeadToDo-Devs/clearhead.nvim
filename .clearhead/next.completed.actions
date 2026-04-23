@@ -1,0 +1,8 @@
+[x] Create hotkey to go to inbox  $ we have one just need to make sure it actually works BEFORE we go into the inbox $ %2026-04-22T10:19 ^2026-02-08T11:40 #019c3ec5-43ae-7a13-a651-117bf3425ee3
+[x] remove normalize as the silent save fallback  $ in the spirit of making the system more coherent we are going to use the LSP, and the above format to track ids and make the normalize command more explicit rather than as a side effect of formatting $ %2026-04-22T10:19 ^2026-03-24T22:13 #019d2369-78d5-7101-abd7-37ac4aa5e7d3
+[x] go over what the LSP does and doesnt provide  $ we want to be clear about what the LSP provides since this is a bit of a strange format overall $ +documentation  %2026-04-22T18:00 ^2026-03-24T22:15 #019d236b-144e-7860-abb4-f4876f20b445
+[x] move from fennel to lua for simplicity  %2026-04-11T15:00 ^2026-04-11T15:00 #019d7e8f-6f17-7112-b818-2fa5693c3a76
+[x] add hotkey to close action and all children  $ we have a nice workflow now for editing a single action but i would like a default where we actually get to be able to close an action and all children! $ %2026-04-23T00:15 ^2026-04-22T22:02 #019db8b7-98ce-76b1-97db-f6a326271410
+[x] add hotkey to go to the project root as distinct from user root  $ right now we always go to user root and we either want to add a flag or a new command $ %2026-04-23T00:15 ^2026-04-22T22:18 #019db8c6-c186-7fa2-9da5-1b5cc8557ccb
+    >[x] create command to go to the project vs user root  %2026-04-23T00:15 ^2026-04-22T22:19 #019db8c6-f63b-76d2-b7ae-15c7f7000d93
+    >[x] add default hotkey for project root  %2026-04-23T00:15 ^2026-04-22T22:19 #019db8c7-9eb4-7043-a332-7fb38f793cbd

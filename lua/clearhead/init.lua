@@ -4,10 +4,16 @@ local actions = require("clearhead.actions")
 
 local M = {}
 
+-- Re-export the actions API so callers only need to require("clearhead").
 M.cycle_state = actions.cycle_state
 M.set_state = actions.set_state
+M.set_state_tree = actions.set_state_tree
 M.smart_new_action = actions.smart_new_action
 M.get_status = actions.get_status
+
+-- ---------------------------------------------------------------------------
+-- Private helpers
+-- ---------------------------------------------------------------------------
 
 local function on_output(prefix)
 	return function(_, data)
@@ -26,6 +32,20 @@ local function on_output(prefix)
 	end
 end
 
+--- Open a file path in the given window without changing global window focus.
+--- winnr: window handle (0 = current window)
+--- path: absolute file path
+local function open_file_in_win(winnr, path)
+	local buf = vim.fn.bufadd(path)
+	-- Do not call bufload manually — nvim_win_set_buf will trigger the load
+	-- sequence in the correct context, avoiding re-entrant autocmd firing.
+	vim.api.nvim_win_set_buf(winnr, buf)
+end
+
+-- ---------------------------------------------------------------------------
+-- Setup
+-- ---------------------------------------------------------------------------
+
 M.setup = function(opts)
 	config.load(opts)
 
@@ -35,8 +55,8 @@ M.setup = function(opts)
 		vim.api.nvim_create_autocmd("BufWritePre", {
 			pattern = "*.actions",
 			group = group,
-			callback = function()
-				M.format()
+			callback = function(args)
+				M.format(args.buf)
 			end,
 		})
 	end
@@ -72,30 +92,68 @@ M.setup = function(opts)
 				local function map(key, fn, desc)
 					vim.keymap.set("n", key, fn, { buffer = true, desc = desc })
 				end
-				map("<localleader><space>", M.cycle_state, "Cycle action state")
+				-- State manipulation — closures supply current buffer/cursor at call time.
+				map("<localleader><space>", function()
+					M.cycle_state(0, vim.fn.line(".") - 1)
+				end, "Cycle action state")
+				map("<localleader>x", function()
+					M.set_state(0, vim.fn.line(".") - 1, "x")
+				end, "Set state to Completed")
+				map("<localleader>X", function()
+					M.set_state_tree(0, vim.fn.line(".") - 1, "x")
+				end, "Close action and all children")
+				map("<localleader>-", function()
+					M.set_state(0, vim.fn.line(".") - 1, "-")
+				end, "Set state to In Progress")
+				map("<localleader>=", function()
+					M.set_state(0, vim.fn.line(".") - 1, "=")
+				end, "Set state to Blocked")
+				map("<localleader>_", function()
+					M.set_state(0, vim.fn.line(".") - 1, "_")
+				end, "Set state to Cancelled")
+				map("<localleader><bs>", function()
+					M.set_state(0, vim.fn.line(".") - 1, " ")
+				end, "Set state to Not Started")
+				-- File operations
 				map("<localleader>f", M.format, "Format action file")
-				map("<localleader>i", M.open_inbox, "Open inbox")
-				map("<localleader>p", M.open_workspace, "Browse workspace")
 				map("<localleader>a", M.archive, "Archive completed actions")
-				map("<localleader>o", M.smart_new_action, "New action below")
-				map("<localleader>x", M.set_state("x"), "Set state to Completed")
-				map("<localleader>-", M.set_state("-"), "Set state to In Progress")
-				map("<localleader>=", M.set_state("="), "Set state to Blocked")
-				map("<localleader>_", M.set_state("_"), "Set state to Cancelled")
-				map("<localleader><bs>", M.set_state(" "), "Set state to Not Started")
+				map("<localleader>o", function()
+					M.smart_new_action(0, vim.fn.line(".") - 1)
+				end, "New action below")
+				-- Navigation
+				map("<localleader>i", function()
+					M.open_inbox(0)
+				end, "Open inbox")
+				map("<localleader>p", function()
+					M.open_workspace(0)
+				end, "Browse workspace")
+				map("<localleader>P", function()
+					M.open_project_root(0)
+				end, "Open project root")
 			end
 		end,
 	})
 
-	vim.api.nvim_create_user_command("ClearheadInbox", M.open_inbox, {})
-	vim.api.nvim_create_user_command("ClearheadWorkspace", M.open_workspace, {})
+	vim.api.nvim_create_user_command("ClearheadInbox", function()
+		M.open_inbox(0)
+	end, {})
+	vim.api.nvim_create_user_command("ClearheadWorkspace", function()
+		M.open_workspace(0)
+	end, {})
+	vim.api.nvim_create_user_command("ClearheadProjectRoot", function()
+		M.open_project_root(0)
+	end, {})
 	vim.api.nvim_create_user_command("ClearheadDiff", function()
 		vim.cmd("vertical diffsplit %")
 	end, {})
 end
 
-M.archive = function()
-	local bufnr = vim.api.nvim_get_current_buf()
+-- ---------------------------------------------------------------------------
+-- File operations
+-- ---------------------------------------------------------------------------
+
+M.archive = function(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
 	local clients = vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr })
 	local client = clients[1]
 	if client then
@@ -109,7 +167,6 @@ M.archive = function()
 				end)
 				return
 			end
-
 			vim.schedule(function()
 				vim.notify("Archived completed actions.")
 			end)
@@ -124,12 +181,16 @@ M.archive = function()
 		return
 	end
 
-	vim.cmd("write")
+	vim.api.nvim_buf_call(bufnr, function()
+		vim.cmd("write")
+	end)
 	vim.fn.jobstart({ bin, "archive", "plans", "--file", filename }, {
 		on_exit = function(_, exit_code)
 			if exit_code == 0 then
 				vim.schedule(function()
-					vim.api.nvim_command("edit!")
+					vim.api.nvim_buf_call(bufnr, function()
+						vim.api.nvim_command("edit!")
+					end)
 					vim.notify("Archived completed actions.")
 				end)
 			else
@@ -141,8 +202,8 @@ M.archive = function()
 	})
 end
 
-M.format = function()
-	local bufnr = vim.api.nvim_get_current_buf()
+M.format = function(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
 	local attached = vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr })
 
 	if #attached > 0 then
@@ -164,6 +225,7 @@ M.format = function()
 end
 
 M.normalize = function(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
 	local filename = vim.api.nvim_buf_get_name(bufnr)
 	local bin = config.get_bin_path()
 	if filename == "" or not bin then
@@ -174,7 +236,9 @@ M.normalize = function(bufnr)
 		on_exit = function(_, exit_code)
 			if exit_code == 0 then
 				vim.schedule(function()
-					vim.api.nvim_command("checktime")
+					vim.api.nvim_buf_call(bufnr, function()
+						vim.api.nvim_command("checktime")
+					end)
 				end)
 			end
 		end,
@@ -182,19 +246,60 @@ M.normalize = function(bufnr)
 	})
 end
 
-M.open_inbox = function()
-	local inbox_path
+-- ---------------------------------------------------------------------------
+-- Navigation
+-- ---------------------------------------------------------------------------
+
+--- Open the inbox file in the given window.
+--- winnr: window handle (0 = current window)
+M.open_inbox = function(winnr)
+	local path
 	if config.values.nvim_inbox_file and config.values.nvim_inbox_file ~= "" then
-		inbox_path = config.expand_path(config.values.nvim_inbox_file)
+		path = config.expand_path(config.values.nvim_inbox_file)
 	else
-		inbox_path = config.expand_path(config.values.data_dir) .. "/" .. config.values.default_file
+		path = config.expand_path(config.values.data_dir) .. "/" .. config.values.default_file
 	end
-	vim.cmd("edit " .. inbox_path)
+	open_file_in_win(winnr, path)
 end
 
-M.open_workspace = function()
-	vim.cmd("edit " .. config.expand_path(config.values.data_dir))
+--- Open the workspace data directory in the given window.
+--- winnr: window handle (0 = current window)
+M.open_workspace = function(winnr)
+	open_file_in_win(winnr, config.expand_path(config.values.data_dir))
 end
+
+--- Walk upward from the current buffer's directory to find the nearest
+--- .clearhead/ subdirectory, then open next.actions inside it.
+--- Falls back to open_inbox if no project root is found.
+--- winnr: window handle (0 = current window)
+M.open_project_root = function(winnr)
+	local buf_path = vim.api.nvim_buf_get_name(
+		vim.api.nvim_win_get_buf(winnr == 0 and vim.api.nvim_get_current_win() or winnr)
+	)
+	local start_dir = buf_path ~= "" and vim.fn.fnamemodify(buf_path, ":h") or vim.fn.getcwd()
+
+	local dir = start_dir
+	while true do
+		local candidate = dir .. "/.clearhead"
+		local stat = vim.uv.fs_stat(candidate)
+		if stat and stat.type == "directory" then
+			open_file_in_win(winnr, candidate .. "/next.actions")
+			return
+		end
+		local parent = vim.fn.fnamemodify(dir, ":h")
+		if parent == dir then
+			break
+		end
+		dir = parent
+	end
+
+	vim.notify("No .clearhead/ directory found, opening inbox instead.", vim.log.levels.WARN)
+	M.open_inbox(winnr)
+end
+
+-- ---------------------------------------------------------------------------
+-- conform.nvim integration helper
+-- ---------------------------------------------------------------------------
 
 M.get_conform_opts = function()
 	return {
@@ -208,6 +313,10 @@ M.get_conform_opts = function()
 		},
 	}
 end
+
+-- ---------------------------------------------------------------------------
+-- Testing hooks
+-- ---------------------------------------------------------------------------
 
 M._testing = {
 	["load-config-internal"] = function(opts)
