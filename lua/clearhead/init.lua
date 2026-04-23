@@ -96,11 +96,24 @@ end
 
 M.archive = function()
 	local bufnr = vim.api.nvim_get_current_buf()
-	if #vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr }) > 0 then
-		vim.lsp.buf.execute_command({
+	local clients = vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr })
+	local client = clients[1]
+	if client then
+		client:request("workspace/executeCommand", {
 			command = "clearhead/archive",
 			arguments = { vim.uri_from_bufnr(bufnr) },
-		})
+		}, function(err)
+			if err then
+				vim.schedule(function()
+					vim.notify("Archive failed: " .. (err.message or "unknown error"), vim.log.levels.ERROR)
+				end)
+				return
+			end
+
+			vim.schedule(function()
+				vim.notify("Archived completed actions.")
+			end)
+		end, bufnr)
 		return
 	end
 
