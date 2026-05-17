@@ -283,7 +283,7 @@ M.open_project_root = function(winnr)
 		local candidate = dir .. "/.clearhead"
 		local stat = vim.uv.fs_stat(candidate)
 		if stat and stat.type == "directory" then
-			open_file_in_win(winnr, candidate .. "/next.actions")
+			open_file_in_win(winnr, candidate .. "/charters/next.actions")
 			return
 		end
 		local parent = vim.fn.fnamemodify(dir, ":h")
