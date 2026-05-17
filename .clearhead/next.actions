@@ -1,3 +1,4 @@
+[ ] write vimdoc helpdoc  $ create doc/clearhead.txt following vimdoc conventions so :help clearhead works; cover: setup/config options, all keybindings, all commands (:ClearheadInbox etc), LSP capabilities, statusline integration — this is the native doc format for neovim users $ +docs #019e37ca-514a-f676-8ec8-9d2ccfd2d5bd
 [_] update smart-new-action to include a UUID  $ we determined in a chat session that this is the easiest way to start our plans off on a good footing with a UUID at birth rather than after saving $ ^2026-03-24T22:12 #019d2368-9086-7bd1-9894-e5a4cef4085d
 [ ] get something where we are able do a query and actually find actions that have simple queries like priority and date  ^2026-04-11T15:00 #019d7e8f-c159-7be3-b3fe-f07dc10f9b1d
         >[ ] this should be something that returns all that is necessary to fill the qflist so that we can jump to the action from the query results  ^2026-04-11T15:00 #019db635-6767-7bb0-a64f-75c82d0c8a6f
