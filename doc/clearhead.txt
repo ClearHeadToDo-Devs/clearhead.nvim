@@ -1,0 +1,270 @@
+*clearhead.txt*    ClearHead action management for Neovim             *clearhead*
+
+Author: Darrion Burgess
+License: MIT
+Repository: https://github.com/ClearHeadToDo-Devs/clearhead.nvim
+
+==============================================================================
+CONTENTS                                                  *clearhead-contents*
+
+  1. Introduction ................... |clearhead-intro|
+  2. Requirements ................... |clearhead-requirements|
+  3. Setup .......................... |clearhead-setup|
+  4. Configuration .................. |clearhead-config|
+  5. Keybindings .................... |clearhead-mappings|
+  6. Commands ....................... |clearhead-commands|
+  7. LSP Capabilities ............... |clearhead-lsp|
+  8. Statusline Integration ......... |clearhead-statusline|
+  9. Conform.nvim Integration ....... |clearhead-conform|
+
+==============================================================================
+1. INTRODUCTION                                             *clearhead-intro*
+
+clearhead.nvim is a thin-client Neovim plugin for the ClearHead personal
+action management platform. It works with `.actions` files: a plaintext DSL
+for capturing and organising work items.
+
+The plugin delegates business logic (archiving, formatting, linting) to the
+`clearhead` CLI and LSP server. Local operations that benefit from low latency
+(state cycling, smart insertion, statusline counts) run directly via
+tree-sitter.
+
+See the ClearHead specifications for the `.actions` file format:
+  https://github.com/ClearHeadToDo-Devs/specifications
+
+==============================================================================
+2. REQUIREMENTS                                        *clearhead-requirements*
+
+  - Neovim 0.11+
+  - tree-sitter support enabled
+  - tree-sitter-actions grammar installed
+  - `clearhead` CLI (optional but recommended for LSP, formatting, archiving)
+    Install: `cargo install clearhead_cli`
+    Or build from source: `cd clearhead-cli && cargo build`
+
+==============================================================================
+3. SETUP                                                    *clearhead-setup*
+
+Install with any plugin manager. Example using lazy.nvim: >lua
+
+  {
+    "ClearHeadToDo-Devs/clearhead.nvim",
+    ft = "actions",
+    config = function()
+      require("clearhead").setup({})
+    end,
+  }
+<
+Call `require("clearhead").setup({})` with any options to override defaults.
+See |clearhead-config| for all available options.
+
+==============================================================================
+4. CONFIGURATION                                           *clearhead-config*
+
+Pass options to `setup()`. All keys are optional; defaults shown below. >lua
+
+  require("clearhead").setup({
+    -- Core settings (shared with CLI via ~/.config/clearhead/config.json)
+    data_dir         = "",             -- workspace data directory (XDG default)
+    config_dir       = "",             -- config directory (XDG default)
+    default_file     = "inbox.actions",
+
+    -- Neovim-specific settings
+    nvim_auto_normalize   = true,   -- add missing UUIDs on save (CLI fallback)
+    nvim_format_on_save   = true,   -- format on BufWritePre via LSP
+    nvim_lsp_enable       = true,   -- auto-start clearhead-lsp for .actions files
+    nvim_lsp_binary_path  = "",     -- explicit path to clearhead binary (auto-detected if empty)
+    nvim_inbox_file       = "",     -- explicit inbox path (overrides data_dir/default_file)
+    nvim_default_mappings = true,   -- enable default <localleader> keybindings
+  })
+<
+                                                        *clearhead-config-xdg*
+XDG defaults ~
+
+  data_dir   defaults to `$XDG_DATA_HOME/clearhead`   (~/.local/share/clearhead)
+  config_dir defaults to `$XDG_CONFIG_HOME/clearhead` (~/.config/clearhead)
+
+Configuration is loaded in this order (later values win):
+  1. Plugin defaults
+  2. `~/.config/clearhead/config.json`
+  3. Environment variables (see below)
+  4. Options passed to `setup()`
+
+                                                         *clearhead-config-env*
+Environment variables ~
+
+  CLEARHEAD_DATA_DIR
+  CLEARHEAD_CONFIG_DIR
+  CLEARHEAD_DEFAULT_FILE
+  CLEARHEAD_NVIM_AUTO_NORMALIZE
+  CLEARHEAD_NVIM_FORMAT_ON_SAVE
+  CLEARHEAD_NVIM_LSP_ENABLE
+  CLEARHEAD_NVIM_INBOX_FILE
+  CLEARHEAD_NVIM_LSP_BINARY_PATH
+  CLEARHEAD_NVIM_DEFAULT_MAPPINGS
+
+                                                    *clearhead-config-bin-path*
+Binary path resolution ~
+
+The plugin looks for the `clearhead` binary in this order:
+  1. `nvim_lsp_binary_path` if set and executable
+  2. `clearhead_cli` on `$PATH`
+  3. `~/.cargo/bin/clearhead_cli`
+
+==============================================================================
+5. KEYBINDINGS                                            *clearhead-mappings*
+
+All mappings are buffer-local and only active in `.actions` files.
+Requires `nvim_default_mappings = true` (default).
+
+`<localleader>` is `\` by default. Override with `:let maplocalleader = ","`.
+
+State manipulation ~
+
+  <localleader><space>   Cycle action state (not started → in progress →
+                         blocked → completed → cancelled → not started)
+  <localleader>x         Set state to Completed  `[x]`
+  <localleader>X         Set state to Completed on current action AND all
+                         children (recursive close)
+  <localleader>-         Set state to In Progress  `[-]`
+  <localleader>=         Set state to Blocked/Awaiting  `[=]`
+  <localleader>_         Set state to Cancelled  `[_]`
+  <localleader><bs>      Set state to Not Started  `[ ]`
+
+File operations ~
+
+  <localleader>f         Format and normalise current file (via LSP, falls
+                         back to CLI normalize if LSP unavailable)
+  <localleader>a         Archive completed action trees (via LSP command
+                         `clearhead/archive`, falls back to CLI)
+  <localleader>o         Insert a new action below the current line at the
+                         same depth; UUID assigned on next save
+
+Navigation ~
+
+  <localleader>i         Open inbox file (|clearhead-config| `default_file`)
+  <localleader>p         Open workspace data directory (works with oil.nvim,
+                         snacks.nvim, netrw, etc.)
+  <localleader>P         Walk up from current buffer to find the nearest
+                         `.clearhead/` directory and open its `next.actions`
+                         file. Falls back to inbox if none found.
+
+==============================================================================
+6. COMMANDS                                              *clearhead-commands*
+
+                                                       *:ClearheadInbox*
+:ClearheadInbox
+    Open the configured inbox file in the current window.
+    Equivalent to `<localleader>i`.
+
+                                                    *:ClearheadWorkspace*
+:ClearheadWorkspace
+    Open the workspace data directory in the current window. Pairs well
+    with a file explorer plugin (oil.nvim, snacks.nvim, netrw).
+    Equivalent to `<localleader>p`.
+
+                                                 *:ClearheadProjectRoot*
+:ClearheadProjectRoot
+    Walk upward from the current buffer's directory to find the nearest
+    `.clearhead/` directory, then open `next.actions` inside it.
+    Falls back to `:ClearheadInbox` if no `.clearhead/` is found.
+    Equivalent to `<localleader>P`.
+
+                                                       *:ClearheadDiff*
+:ClearheadDiff
+    Open a vertical diff split of the current buffer against itself.
+    Useful for reviewing changes before saving.
+
+==============================================================================
+7. LSP CAPABILITIES                                          *clearhead-lsp*
+
+The `clearhead-lsp` server (bundled with the `clearhead` CLI binary) provides
+these capabilities for any LSP-compatible editor. The plugin auto-attaches it
+to `.actions` buffers when `nvim_lsp_enable = true`.
+
+Start the LSP server manually: >sh
+  clearhead start lsp
+<
+
+  Capability            What it does ~
+  ─────────────────────────────────────────────────────────────────────────
+  Completion            Date snippets for `@`, `%`, `^` fields:
+                        "now", "today", "tomorrow"
+
+  Code Actions          Hydrate UUID (assign missing `#id`)
+                        Set completion date
+                        Set / derive creation date from UUIDv7 timestamp
+
+  Semantic Tokens       Syntax highlighting for: id, priority, state, name,
+                        description, objective reference, context tags, dates
+
+  Inlay Hints           Due-date countdown: "due in 3d", "due today"
+                        Completion age: "done 5d ago"
+
+  Go to Definition      Jump to first occurrence of an objective or context tag
+
+  Find References       List all occurrences of an objective or context tag
+
+  Document Formatting   Normalise file: assign missing UUIDs, fix spacing,
+                        reindent children
+
+  Diagnostics           Lint warnings on every change: missing UUID,
+                        invalid dates, unresolved references
+
+  Execute Command       `clearhead/archive` — archive completed action trees
+                        (returns WorkspaceEdit, no buffer reload needed)
+
+  Telemetry (on save)   Diff saved state to emit action lifecycle events
+
+                                                       *clearhead-lsp-local*
+Operations that run locally (no LSP roundtrip) ~
+
+  State cycling         tree-sitter finds and replaces the state character
+  Smart new action      Inserts at correct depth with creation date;
+                        UUID assigned by format-on-save
+  Statusline count      Completed/total via tree-sitter query
+  Completion date stamp Appends `%<timestamp>` when state → completed
+
+==============================================================================
+8. STATUSLINE INTEGRATION                             *clearhead-statusline*
+
+`require("clearhead").get_status()` returns a string like `✓ 5/12` showing
+completed vs total actions in the current buffer.
+
+Example with lualine.nvim: >lua
+
+  require("lualine").setup({
+    sections = {
+      lualine_x = {
+        {
+          function()
+            return require("clearhead").get_status()
+          end,
+        },
+      },
+    },
+  })
+<
+
+==============================================================================
+9. CONFORM.NVIM INTEGRATION                              *clearhead-conform*
+
+`require("clearhead").get_conform_opts()` returns the formatter config for
+conform.nvim: >lua
+
+  local clearhead = require("clearhead")
+
+  require("conform").setup({
+    formatters_by_ft = clearhead.get_conform_opts().formatters_by_ft,
+    formatters       = clearhead.get_conform_opts().formatters,
+  })
+<
+This registers `clearhead_cli` as a formatter for the `actions` filetype,
+running `clearhead format file $FILENAME` on save.
+
+Note: when `nvim_lsp_enable = true` (default), LSP formatting takes
+precedence and conform integration is not needed unless you prefer
+conform's workflow.
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
