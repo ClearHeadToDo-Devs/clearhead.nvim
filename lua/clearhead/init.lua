@@ -42,6 +42,56 @@ local function open_file_in_win(winnr, path)
 	vim.api.nvim_win_set_buf(winnr, buf)
 end
 
+--- Return list of { charters=path, label=scope } for global workspace +
+--- nearest project .clearhead/ (walk up from cwd). Deduped.
+local function collect_workspace_roots()
+	local roots = {}
+	local seen = {}
+
+	local function add(charters_path, label)
+		if not seen[charters_path] then
+			seen[charters_path] = true
+			roots[#roots + 1] = { charters = charters_path, label = label }
+		end
+	end
+
+	-- Global workspace
+	local data_dir = config.expand_path(config.values.data_dir)
+	if data_dir and data_dir ~= "" then
+		add(data_dir .. "/charters", "~")
+	end
+
+	-- Nearest project workspace: walk up from cwd
+	local dir = vim.fn.getcwd()
+	while true do
+		local candidate = dir .. "/.clearhead"
+		local stat = vim.uv.fs_stat(candidate)
+		if stat and stat.type == "directory" then
+			add(candidate .. "/charters", vim.fn.fnamemodify(dir, ":t"))
+			break
+		end
+		local parent = vim.fn.fnamemodify(dir, ":h")
+		if parent == dir then
+			break
+		end
+		dir = parent
+	end
+
+	return roots
+end
+
+--- Derive a human-readable charter name from a file path inside charters/.
+--- next.actions / README.md → parent directory name; everything else → stem.
+local function charter_stem(path)
+	local tail = vim.fn.fnamemodify(path, ":t")
+	if tail == "next.actions" or tail == "README.md" then
+		return vim.fn.fnamemodify(path, ":h:t")
+	end
+	local stem = vim.fn.fnamemodify(path, ":t:r")
+	stem = stem:gsub("%.completed$", ""):gsub("%.upcoming$", "")
+	return stem
+end
+
 -- ---------------------------------------------------------------------------
 -- Setup
 -- ---------------------------------------------------------------------------
@@ -131,6 +181,8 @@ M.setup = function(opts)
 				map("<localleader>P", function()
 					M.open_project_root(0)
 				end, "Open project root")
+				map("<localleader>s", M.pick_action_file, "Pick active action file")
+				map("<localleader>S", M.pick_charter_doc, "Pick charter document")
 			end
 		end,
 	})
@@ -149,6 +201,12 @@ M.setup = function(opts)
 	end, {})
 	vim.api.nvim_create_user_command("ClearheadArchiveWorkspace", function()
 		M.archive_workspace()
+	end, {})
+	vim.api.nvim_create_user_command("ClearheadPickActions", function()
+		M.pick_action_file()
+	end, {})
+	vim.api.nvim_create_user_command("ClearheadPickCharters", function()
+		M.pick_charter_doc()
 	end, {})
 end
 
@@ -387,6 +445,108 @@ M.open_project_root = function(winnr)
 
 	vim.notify("No .clearhead/ directory found, opening inbox instead.", vim.log.levels.WARN)
 	M.open_inbox(winnr)
+end
+
+--- Pick an active action file across all workspace roots using vim.ui.select.
+--- Active = *.actions excluding *.completed.actions and *.upcoming.actions.
+--- Integrates with telescope/fzf-lua/snacks automatically via vim.ui.select.
+M.pick_action_file = function()
+	local roots = collect_workspace_roots()
+	local items = {}
+	local multi_scope = #roots > 1
+
+	for _, root in ipairs(roots) do
+		local files = vim.fn.glob(root.charters .. "/*.actions", false, true)
+		local subfiles = vim.fn.glob(root.charters .. "/*/*.actions", false, true)
+		vim.list_extend(files, subfiles)
+
+		for _, path in ipairs(files) do
+			local tail = vim.fn.fnamemodify(path, ":t")
+			if not tail:match("%.completed%.actions$") and not tail:match("%.upcoming%.actions$") then
+				items[#items + 1] = {
+					path = path,
+					name = charter_stem(path),
+					scope = root.label,
+					multi_scope = multi_scope,
+				}
+			end
+		end
+	end
+
+	if #items == 0 then
+		vim.notify("No active action files found.", vim.log.levels.WARN)
+		return
+	end
+
+	table.sort(items, function(a, b)
+		if a.scope ~= b.scope then
+			return a.scope < b.scope
+		end
+		return a.name < b.name
+	end)
+
+	vim.ui.select(items, {
+		prompt = "Action file: ",
+		format_item = function(item)
+			if item.multi_scope then
+				return "[" .. item.scope .. "] " .. item.name
+			end
+			return item.name
+		end,
+	}, function(choice)
+		if choice then
+			open_file_in_win(0, choice.path)
+		end
+	end)
+end
+
+--- Pick a markdown charter document across all workspace roots using vim.ui.select.
+--- Matches *.md at the top level and */README.md for directory-form charters.
+M.pick_charter_doc = function()
+	local roots = collect_workspace_roots()
+	local items = {}
+	local multi_scope = #roots > 1
+
+	for _, root in ipairs(roots) do
+		local files = vim.fn.glob(root.charters .. "/*.md", false, true)
+		local subfiles = vim.fn.glob(root.charters .. "/*/*.md", false, true)
+		vim.list_extend(files, subfiles)
+
+		for _, path in ipairs(files) do
+			items[#items + 1] = {
+				path = path,
+				name = charter_stem(path),
+				scope = root.label,
+				multi_scope = multi_scope,
+			}
+		end
+	end
+
+	if #items == 0 then
+		vim.notify("No charter documents found.", vim.log.levels.WARN)
+		return
+	end
+
+	table.sort(items, function(a, b)
+		if a.scope ~= b.scope then
+			return a.scope < b.scope
+		end
+		return a.name < b.name
+	end)
+
+	vim.ui.select(items, {
+		prompt = "Charter doc: ",
+		format_item = function(item)
+			if item.multi_scope then
+				return "[" .. item.scope .. "] " .. item.name
+			end
+			return item.name
+		end,
+	}, function(choice)
+		if choice then
+			open_file_in_win(0, choice.path)
+		end
+	end)
 end
 
 -- ---------------------------------------------------------------------------
