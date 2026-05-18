@@ -138,7 +138,10 @@ File operations ~
                          back to CLI normalize if LSP unavailable)
   <localleader>a         Archive completed action trees in the current file
                          (via LSP command `clearhead/archive`, falls back
-                         to CLI)
+                         to CLI). When invoked from a `.completed.actions`
+                         buffer, routes to `archive charter <name>` so the
+                         actions are swept into `archive.ttl`; requires
+                         `state: Closed` in the charter frontmatter.
   <localleader>A         Archive the current charter. Infers the charter
                          name from the open buffer's path. The charter
                          frontmatter must have `state: Closed` before
@@ -146,6 +149,12 @@ File operations ~
                          access with `force` / `dry_run` opts.
   <localleader>o         Insert a new action below the current line at the
                          same depth; UUID assigned on next save
+  >>                     Increase the depth of the action on the current
+                         line by one (prepend a `>` marker). The LSP will
+                         flag invalid depth transitions on the next save.
+  <<                     Decrease the depth of the action on the current
+                         line by one (remove a `>` marker). Notifies and
+                         does nothing on root-level actions.
 
 Navigation ~
 
@@ -328,6 +337,17 @@ Buffer/window arguments default to the current buffer or window when omitted.
 `get_status()`
     Returns a string like `✓ 5/12` (completed / total) for the current
     buffer, computed via tree-sitter. See |clearhead-statusline|.
+
+                                              *clearhead.indent_action()*
+`indent_action([bufnr], [linenr])`
+    Increase the depth of the action on `linenr` (0-indexed) by one.
+    Prepends a `>` marker directly before the existing marker sequence.
+    The LSP will validate the resulting depth on next save.
+
+                                              *clearhead.dedent_action()*
+`dedent_action([bufnr], [linenr])`
+    Decrease the depth of the action on `linenr` by one. Removes one `>`
+    marker. Notifies with a warning if the action is already at root depth.
 
                                            *clearhead.pick_action_file()*
 `pick_action_file()`

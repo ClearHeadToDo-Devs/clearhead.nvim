@@ -167,6 +167,45 @@ M.smart_new_action = function(bufnr, linenr)
 	vim.cmd("startinsert!")
 end
 
+--- Increase the depth of the action on the given 0-indexed line by one.
+--- Prepends a '>' marker immediately before the state bracket.
+--- bufnr: buffer number (0 = current)
+--- linenr: 0-indexed line number
+M.indent_action = function(bufnr, linenr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
+	local line = vim.api.nvim_buf_get_lines(bufnr, linenr, linenr + 1, false)[1]
+	if not line then
+		return
+	end
+	-- Capture: leading whitespace | zero or more '>' markers | rest (includes state bracket)
+	local ws, markers, rest = line:match("^(%s*)(>*)(.*)$")
+	if not rest then
+		return
+	end
+	vim.api.nvim_buf_set_lines(bufnr, linenr, linenr + 1, false, { ws .. markers .. ">" .. rest })
+end
+
+--- Decrease the depth of the action on the given 0-indexed line by one.
+--- Removes one '>' marker. Notifies and does nothing on root-level actions.
+--- bufnr: buffer number (0 = current)
+--- linenr: 0-indexed line number
+M.dedent_action = function(bufnr, linenr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
+	local line = vim.api.nvim_buf_get_lines(bufnr, linenr, linenr + 1, false)[1]
+	if not line then
+		return
+	end
+	local ws, markers, rest = line:match("^(%s*)(>*)(.*)$")
+	if not rest then
+		return
+	end
+	if markers == "" then
+		vim.notify("Already at root depth.", vim.log.levels.WARN)
+		return
+	end
+	vim.api.nvim_buf_set_lines(bufnr, linenr, linenr + 1, false, { ws .. markers:sub(1, -2) .. rest })
+end
+
 --- Return a summary string like "✓ 2/5" for the given buffer, or "" if no actions.
 --- bufnr: buffer number (0 = current)
 M.get_status = function(bufnr)

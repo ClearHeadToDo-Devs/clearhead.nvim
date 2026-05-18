@@ -10,6 +10,8 @@ M.set_state = actions.set_state
 M.set_state_tree = actions.set_state_tree
 M.smart_new_action = actions.smart_new_action
 M.get_status = actions.get_status
+M.indent_action = actions.indent_action
+M.dedent_action = actions.dedent_action
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -84,7 +86,13 @@ end
 --- next.actions / README.md → parent directory name; everything else → stem.
 local function charter_stem(path)
 	local tail = vim.fn.fnamemodify(path, ":t")
-	if tail == "next.actions" or tail == "README.md" then
+	-- Directory-form charter files all use 'next' as the filename stem;
+	-- the charter name is the parent directory.
+	if tail == "next.actions"
+		or tail == "next.completed.actions"
+		or tail == "next.upcoming.actions"
+		or tail == "README.md"
+	then
 		return vim.fn.fnamemodify(path, ":h:t")
 	end
 	local stem = vim.fn.fnamemodify(path, ":t:r")
@@ -171,6 +179,12 @@ M.setup = function(opts)
 				map("<localleader>o", function()
 					M.smart_new_action(0, vim.fn.line(".") - 1)
 				end, "New action below")
+				map(">>", function()
+					M.indent_action(0, vim.fn.line(".") - 1)
+				end, "Increase action depth")
+				map("<<", function()
+					M.dedent_action(0, vim.fn.line(".") - 1)
+				end, "Decrease action depth")
 				-- Navigation
 				map("<localleader>i", function()
 					M.open_inbox(0)
@@ -240,6 +254,33 @@ M.archive = function(bufnr)
 	local bin = config.get_bin_path()
 	if filename == "" or not bin then
 		vim.notify("Cannot archive: buffer has no file or CLI not found.", vim.log.levels.ERROR)
+		return
+	end
+
+	-- .completed.actions files hold already-closed actions waiting to be swept
+	-- into archive.ttl. Passing them to `archive actions --file` would call
+	-- completed_acts_path() on the path, producing a .completed.completed.actions
+	-- file. Route to `archive charter <name>` instead so they go to archive.ttl.
+	local tail = vim.fn.fnamemodify(filename, ":t")
+	if tail:match("%.completed%.actions$") then
+		local name = charter_stem(filename)
+		vim.fn.jobstart({ bin, "archive", "charter", name }, {
+			on_exit = function(_, exit_code)
+				vim.schedule(function()
+					if exit_code == 0 then
+						vim.notify("Charter '" .. name .. "' archived to archive.ttl.")
+					else
+						vim.notify(
+							"Charter '" .. name .. "' must have 'state: Closed' in its .md file. "
+								.. "Set it, then use <localleader>A.",
+							vim.log.levels.WARN
+						)
+					end
+				end)
+			end,
+			on_stdout = on_output(nil),
+			on_stderr = on_output("Archive charter error: "),
+		})
 		return
 	end
 
