@@ -1,4 +1,4 @@
-*clearhead.txt*    ClearHead action management for Neovim             *clearhead*
+*clearhead.txt*    ClearHead action management for Neovim          *clearhead*
 
 Author: Darrion Burgess
 License: MIT
@@ -7,41 +7,49 @@ Repository: https://github.com/ClearHeadToDo-Devs/clearhead.nvim
 ==============================================================================
 CONTENTS                                                  *clearhead-contents*
 
-  1. Introduction ................... |clearhead-intro|
-  2. Requirements ................... |clearhead-requirements|
-  3. Setup .......................... |clearhead-setup|
-  4. Configuration .................. |clearhead-config|
-  5. Keybindings .................... |clearhead-mappings|
-  6. Commands ....................... |clearhead-commands|
-  7. LSP Capabilities ............... |clearhead-lsp|
-  8. Statusline Integration ......... |clearhead-statusline|
-  9. Lua API ........................ |clearhead-api|
-  10. Conform.nvim Integration ...... |clearhead-conform|
+  1.  Introduction .................. |clearhead-intro|
+  2.  Requirements .................. |clearhead-requirements|
+  3.  Setup ......................... |clearhead-setup|
+  4.  Configuration ................. |clearhead-config|
+  5.  Tutorial ...................... |clearhead-tutorial|
+       5.1  First capture ........... |clearhead-tut-capture|
+       5.2  The actions format ....... |clearhead-tut-format|
+       5.3  Children and depth ....... |clearhead-tut-depth|
+       5.4  Daily workflow ........... |clearhead-tut-workflow|
+       5.5  Charters ................. |clearhead-tut-charters|
+       5.6  Project workspaces ....... |clearhead-tut-projects|
+       5.7  Archiving lifecycle ....... |clearhead-tut-archive|
+  6.  Keybindings ................... |clearhead-mappings|
+  7.  Commands ...................... |clearhead-commands|
+  8.  LSP Capabilities .............. |clearhead-lsp|
+  9.  Statusline Integration ........ |clearhead-statusline|
+  10. Lua API ....................... |clearhead-api|
+  11. Conform.nvim Integration ...... |clearhead-conform|
 
 ==============================================================================
 1. INTRODUCTION                                             *clearhead-intro*
 
 clearhead.nvim is a thin-client Neovim plugin for the ClearHead personal
-action management platform. It works with `.actions` files: a plaintext DSL
-for capturing and organising work items.
+action management platform. It works with `.actions` files — a plaintext
+DSL for capturing and organising work items.
 
 The plugin delegates business logic (archiving, formatting, linting) to the
-`clearhead` CLI and LSP server. Local operations that benefit from low latency
-(state cycling, smart insertion, statusline counts) run directly via
-tree-sitter.
+`clearhead` CLI and LSP server. Local operations that benefit from low
+latency (state cycling, smart insertion, statusline counts) run directly via
+tree-sitter, so they work even offline or before the CLI is installed.
 
-See the ClearHead specifications for the `.actions` file format:
-  https://github.com/ClearHeadToDo-Devs/specifications
+The workspace is plain text on disk. It will always be readable without
+any tooling, and every file is safe to commit to version control.
 
 ==============================================================================
 2. REQUIREMENTS                                        *clearhead-requirements*
 
   - Neovim 0.10+
   - tree-sitter support enabled
-  - tree-sitter-actions grammar installed
+  - `nvim-treesitter` with the `actions` grammar installed
   - `clearhead` CLI (optional but recommended for LSP, formatting, archiving)
-    Install: `cargo install clearhead`
-    Or build from source: `cd clearhead-cli && cargo build`
+    Install:        `cargo install clearhead`
+    Build source:   `cd clearhead-cli && cargo build`
 
 ==============================================================================
 3. SETUP                                                    *clearhead-setup*
@@ -56,8 +64,13 @@ Install with any plugin manager. Example using lazy.nvim: >lua
     end,
   }
 <
-Call `require("clearhead").setup({})` with any options to override defaults.
-See |clearhead-config| for all available options.
+Call `setup({})` once with any options to override defaults.
+See |clearhead-config| for all available keys.
+
+Verify installation: >vim
+
+  :checkhealth clearhead
+<
 
 ==============================================================================
 4. CONFIGURATION                                           *clearhead-config*
@@ -65,31 +78,31 @@ See |clearhead-config| for all available options.
 Pass options to `setup()`. All keys are optional; defaults shown below. >lua
 
   require("clearhead").setup({
-    -- Core settings (shared with CLI via ~/.config/clearhead/config.json)
-    data_dir         = "",             -- workspace data directory (XDG default)
-    config_dir       = "",             -- config directory (XDG default)
-    default_file     = "inbox.actions",
+    -- Core (shared with CLI via ~/.config/clearhead/config.json)
+    data_dir              = "",    -- workspace root (XDG default)
+    config_dir            = "",    -- config directory (XDG default)
+    default_file          = "inbox.actions",
 
-    -- Neovim-specific settings
-    nvim_auto_normalize   = true,   -- add missing UUIDs on save (CLI fallback)
-    nvim_format_on_save   = true,   -- format on BufWritePre via LSP
-    nvim_lsp_enable       = true,   -- auto-start clearhead-lsp for .actions files
-    nvim_lsp_binary_path  = "",     -- explicit path to clearhead binary (auto-detected if empty)
-    nvim_inbox_file       = "",     -- explicit inbox path (overrides data_dir/default_file)
-    nvim_default_mappings = true,   -- enable default <localleader> keybindings
+    -- Neovim-specific
+    nvim_auto_normalize   = true,  -- add missing UUIDs on save
+    nvim_format_on_save   = true,  -- format on BufWritePre via LSP
+    nvim_lsp_enable       = true,  -- auto-start clearhead-lsp
+    nvim_lsp_binary_path  = "",    -- explicit binary path (auto-detected)
+    nvim_inbox_file       = "",    -- override inbox path
+    nvim_default_mappings = true,  -- enable <localleader> keybindings
   })
 <
                                                         *clearhead-config-xdg*
 XDG defaults ~
 
-  data_dir   defaults to `$XDG_DATA_HOME/clearhead`   (~/.local/share/clearhead)
-  config_dir defaults to `$XDG_CONFIG_HOME/clearhead` (~/.config/clearhead)
+  data_dir    →  $XDG_DATA_HOME/clearhead   (~/.local/share/clearhead)
+  config_dir  →  $XDG_CONFIG_HOME/clearhead (~/.config/clearhead)
 
 Configuration is loaded in this order (later values win):
   1. Plugin defaults
   2. `~/.config/clearhead/config.json`
-  3. Environment variables (see below)
-  4. Options passed to `setup()`
+  3. Environment variables
+  4. Keys passed to `setup()`
 
                                                          *clearhead-config-env*
 Environment variables ~
@@ -107,174 +120,571 @@ Environment variables ~
                                                     *clearhead-config-bin-path*
 Binary path resolution ~
 
-The plugin looks for the `clearhead` binary in this order:
+The plugin resolves the `clearhead` binary in this order:
   1. `nvim_lsp_binary_path` if set and executable
   2. `clearhead` on `$PATH`
   3. `~/.cargo/bin/clearhead`
 
 ==============================================================================
-5. KEYBINDINGS                                            *clearhead-mappings*
+5. TUTORIAL                                               *clearhead-tutorial*
+
+This tutorial walks through real usage from first capture to archiving a
+finished charter. If you want a specific topic jump directly to its section.
+
+  |clearhead-tut-capture|   — write your first action
+  |clearhead-tut-format|    — the .actions file format
+  |clearhead-tut-depth|     — children, depth, indent/dedent
+  |clearhead-tut-workflow|  — the daily capture → act → archive loop
+  |clearhead-tut-charters|  — organising work into charters
+  |clearhead-tut-projects|  — per-project .clearhead/ workspaces
+  |clearhead-tut-archive|   — the full lifecycle to archive.ttl
+
+------------------------------------------------------------------------------
+5.1 FIRST CAPTURE                                      *clearhead-tut-capture*
+
+Open the inbox in the current window: >vim
+
+  :ClearheadInbox
+<
+Or from any `.actions` buffer: `<localleader>i`
+
+The inbox lives at `data_dir/charters/inbox.actions`. It is the default
+landing zone for anything that has not been sorted into a charter yet.
+
+Write your first action — just a state and a name: >
+
+  [ ] buy oat milk
+<
+Save the file. On save, the LSP (or CLI fallback) assigns a UUID and
+normalises spacing: >
+
+  [ ] buy oat milk ^2026-05-17T14:30 #019eabcd-...
+<
+The `^` timestamp records when the action was created. The `#` field is
+the stable UUID that lets other actions reference this one and lets the
+system track it across renames.
+
+You do not need to type either field by hand. Format-on-save handles both.
+
+------------------------------------------------------------------------------
+5.2 THE ACTIONS FORMAT                                  *clearhead-tut-format*
+
+A `.actions` file is a list of actions. Every action starts with a state
+marker. Fields follow in any order (the formatter will sort them on save).
+
+States ~
+
+  `[ ]`   Not started
+  `[-]`   In progress
+  `[=]`   Blocked / awaiting something
+  `[x]`   Completed
+  `[_]`   Cancelled
+
+Fields (all optional except state and name) ~
+
+  `=alias`            Stable short name for cross-references
+  `$ ... $`           Multi-line description block (see below)
+  `~`                 Sequential children — children must be done in order
+  `!<n>`              Priority (1 = highest urgency)
+  `*<ref>`            Objective or parent reference (`*work/clearhead/docs`)
+  `+<tag>`            Context tag (`+work`, `+home,errand`)
+  `@<datetime>`       Do date — when you intend to work on this
+  `:<datetime>`       Due date — hard deadline
+  `^<datetime>`       Created timestamp (assigned automatically)
+  `%<datetime>`       Completed timestamp (assigned when state → x)
+  `#<uuid>`           Stable identifier (assigned automatically)
+  `<<ref>`            Predecessor — must be closed before this is unblocked
+
+A complete example: >
+
+  [-] Ship v1.0 release =ship-v1 !1 *clearhead @2026-06-01T09:00
+      $ Final release checklist. All children sequential. $
+      ~ +work ^2026-05-01T10:00 #019eabcd-1234-...
+  > [ ] Run test suite !2 +ci
+  > [ ] Build binary !1
+  > [ ] Tag release !1 < build-binary
+  > [ ] Publish to crates.io !1
+  > [ ] Announce !3
+<
+Descriptions ~
+
+A description block opens and closes with `$`: >
+
+  [ ] Weekly review
+      $ Review all open actions. Check in with
+        project charters. Update priorities.
+      $
+<
+Inline description (single line): >
+
+  [ ] Buy coffee $ dark roast, whole bean $
+<
+Dates ~
+
+Dates follow ISO 8601. All of these are valid: >
+
+  @2026-05-17
+  @2026-05-17T14:30
+  @2026-05-17T14:30:00
+<
+Time zones are optional; local time is assumed when omitted.
+
+Objective references ~
+
+`*` links an action to an objective. Use path notation to reference nested
+objectives: >
+
+  [ ] Write ADR for new auth scheme *work/clearhead/architecture
+<
+Context tags ~
+
+Tags are prefixed with `+`. Multiple tags can be comma-separated: >
+
+  [ ] Grocery run +home,errand @2026-05-18
+<
+Predecessors ~
+
+`<ref>` marks a dependency. The action is blocked until the predecessor is
+closed. Reference by alias, UUID prefix, or name: >
+
+  [ ] Deploy to production < run-migrations =deploy-prod
+<
+Aliases ~
+
+`=alias` gives an action a stable short name for references. Aliases must
+be unique within the workspace: >
+
+  [ ] Run database migrations =run-migrations !1
+<
+
+------------------------------------------------------------------------------
+5.3 CHILDREN AND DEPTH                                    *clearhead-tut-depth*
+
+Children are indented with `>` markers. One `>` = depth 1, `>>` = depth 2,
+and so on. Whitespace before the marker is cosmetic and does not affect
+parsing — use it for visual alignment.
+
+A parent action and its children: >
+
+  [ ] Plan team offsite
+  >[ ] Book venue @2026-06-10
+  >[ ] Arrange travel
+  >>[ ] Book flights
+  >>[ ] Book hotels
+  >[ ] Send invites @2026-06-12
+<
+Keyboard shortcuts for depth changes ~
+
+  `>>`   Increase depth of action on current line (adds one `>`)
+  `<<`   Decrease depth of action on current line (removes one `>`)
+
+These map over the built-in Vim indent commands for `.actions` buffers.
+The LSP will flag invalid depth transitions (such as skipping a level)
+on the next save.
+
+Creating a sibling action ~
+
+  `<localleader>o`   Insert a new `[ ]` below the current line at the
+                     same depth. A `^` creation timestamp is added; the
+                     UUID is assigned on save.
+
+Sequential children ~
+
+Add `~` to a parent to mark its direct children as sequentially ordered.
+The LSP surfaces a warning if they are completed out of order: >
+
+  [ ] Morning routine ~
+  >[ ] Wake up
+  >[ ] Shower
+  >[ ] Breakfast
+<
+
+------------------------------------------------------------------------------
+5.4 DAILY WORKFLOW                                     *clearhead-tut-workflow*
+
+A typical day with clearhead.nvim looks like this:
+
+1. CAPTURE
+   Jump to the inbox with `<localleader>i` (or `:ClearheadInbox`) and
+   dump everything you need to do. Don't worry about organisation yet.
+   One action per line; state is `[ ]`. Save; UUIDs are assigned. >
+
+     [ ] reply to Alice's email +work
+     [ ] pick up prescription +health @2026-05-18
+     [ ] review PR #412 +work
+<
+
+2. TRIAGE
+   Open the picker with `<localleader>s` to jump to the charter where
+   each item belongs, or use `<localleader>i` to stay in the inbox.
+
+   Set priorities with `!` fields. Add `@` do-dates where helpful.
+   Use `<localleader><space>` to cycle states as you triage:
+
+     `[ ]` → `[-]` → `[=]` → `[x]` → `[_]` → `[ ]`
+
+3. ACT
+   Work through the day. Use `<localleader>-` to mark items in progress.
+   Use `<localleader>x` to complete them. The `%` completion timestamp
+   is appended automatically.
+
+4. REVIEW
+   At the end of the day (or week), check the statusline count.
+   `get_status()` returns `✓ completed/total` for the current file.
+   See |clearhead-statusline|.
+
+5. ARCHIVE
+   When a file accumulates many completed items, press `<localleader>a`
+   to sweep them to `<charter>.completed.actions`. See |clearhead-tut-archive|.
+
+State cycling reference ~
+
+  `<localleader><space>`   Cycle through all states in order
+  `<localleader>x`         Complete (single action)
+  `<localleader>X`         Complete action AND all its children recursively
+  `<localleader>-`         Mark in progress
+  `<localleader>=`         Mark blocked/awaiting
+  `<localleader>_`         Cancel
+  `<localleader><bs>`      Reset to not started
+
+------------------------------------------------------------------------------
+5.5 CHARTERS                                          *clearhead-tut-charters*
+
+A charter is a named domain of concern — roughly equivalent to a project,
+area of responsibility, or theme. Each charter gets its own `.actions` file.
+
+Workspace layout ~
+>
+  ~/.local/share/clearhead/
+  ├── archive.ttl              ← all closed history
+  ├── charters/
+  │   ├── inbox.actions        ← uncategorised captures
+  │   ├── work.actions         ← a flat charter
+  │   ├── health.actions
+  │   ├── financial/           ← directory-form charter
+  │   │   ├── README.md        ← charter description / metadata
+  │   │   └── next.actions     ← the charter's active actions
+  │   └── financial/
+  │       └── taxes.actions    ← sub-charter inside financial/
+  ├── objectives/
+  └── plans/
+<
+Flat charters use a single file (`health.actions`). Directory-form charters
+are a folder with `next.actions` as the entry point and an optional
+`README.md` carrying frontmatter (alias, state, description).
+
+Each charter can also have:
+  `<charter>.completed.actions`  — completed/cancelled actions
+  `<charter>.upcoming.actions`   — future generated instances from plans
+
+Navigation ~
+
+  `<localleader>i`   Open inbox
+  `<localleader>s`   Picker over all active action files (global + project)
+  `<localleader>S`   Picker over all markdown charter documents
+  `<localleader>p`   Open workspace data directory (netrw / oil.nvim / etc.)
+  `<localleader>P`   Walk up from current buffer, open nearest `next.actions`
+
+The pickers (`<localleader>s` / `<localleader>S`) use `vim.ui.select` and
+automatically delegate to telescope, fzf-lua, or snacks.nvim if installed,
+giving you fuzzy search over all charter names with no extra configuration.
+
+When multiple workspaces are visible (global + a project), each label is
+prefixed `[scope]` — e.g. `[~] health` vs `[platform] health` — so fuzzy
+search distinguishes them cleanly.
+
+Charter markdown files ~
+
+A `<charter>.md` or `README.md` carries YAML frontmatter: >yaml
+
+  ---
+  alias: financial
+  state: Active
+  description: Personal finance tracking
+  ---
+<
+`state: Closed` is required before the charter can be archived (see
+|clearhead-tut-archive|). Use `<localleader>S` to jump to the markdown file
+and edit it.
+
+------------------------------------------------------------------------------
+5.6 PROJECT WORKSPACES                                 *clearhead-tut-projects*
+
+Any directory containing a `.clearhead/` folder is a project workspace.
+The plugin walks upward from the current buffer to find the nearest one.
+
+Project workspace layout ~
+>
+  my-project/
+  └── .clearhead/
+      ├── charters/
+      │   ├── next.actions       ← root charter for the project
+      │   ├── backend.actions
+      │   └── frontend/
+      │       └── next.actions
+      ├── objectives/
+      └── plans/
+<
+Create a project workspace: >sh
+
+  mkdir -p my-project/.clearhead/charters
+  touch my-project/.clearhead/charters/next.actions
+<
+Open the project root from any buffer inside the project: >vim
+
+  <localleader>P
+<
+or >vim
+
+  :ClearheadProjectRoot
+<
+The plugin walks upward from the current file's directory until it finds
+`.clearhead/`, then opens `charters/next.actions`. If none is found, it
+falls back to the global inbox.
+
+Both the global workspace and the nearest project workspace are visible
+in the `<localleader>s` / `<localleader>S` pickers simultaneously.
+
+------------------------------------------------------------------------------
+5.7 ARCHIVING LIFECYCLE                                *clearhead-tut-archive*
+
+Actions move through three stages before leaving the workspace entirely.
+
+Stage 1: Active  (`<charter>.actions`)
+  Open, in-progress, and blocked actions. This is the working file.
+
+Stage 2: Completed  (`<charter>.completed.actions`)
+  Completed and cancelled actions, kept for recent history and reference.
+  This file accumulates over time and can be cleaned up independently.
+
+Stage 3: Archive  (`archive.ttl` at the workspace root)
+  Permanent read-only history. Written only when a whole charter is
+  archived. Not a plain-text file — use `clearhead read archive` to query.
+
+Moving from Stage 1 → Stage 2 ~
+
+Press `<localleader>a` in any active `.actions` buffer. The LSP command
+`clearhead/archive` sweeps completed and cancelled actions out of the file
+and into `<charter>.completed.actions`.
+
+If the LSP is not attached, the CLI fallback runs:
+  `clearhead archive actions --file <filename>`
+
+Moving from Stage 2 → Stage 3 (charter archive) ~
+
+This requires two steps:
+
+  1. Set `state: Closed` in the charter's `.md` / `README.md` frontmatter.
+     Jump there with `<localleader>S` and edit the file.
+
+  2. Press `<localleader>A` in any buffer belonging to that charter.
+     The plugin infers the charter name from the buffer path and runs:
+       `clearhead archive charter <name>`
+
+     What happens:
+       - All completed actions from `.completed.actions` → `archive.ttl`
+       - All planned instances from `plans/<charter>/` → `archive.ttl`
+       - The charter metadata itself → `archive.ttl`
+       - The now-empty `.actions`, `.completed.actions`, and `plans/`
+         directory are removed
+
+To archive all closed charters in one pass: >vim
+
+  :ClearheadArchiveWorkspace
+<
+Pressing `<localleader>a` from a `.completed.actions` buffer ~
+
+The plugin detects this case and redirects to `archive charter <name>`
+rather than trying to archive an already-completed file. If the charter
+is not yet marked `state: Closed`, a message guides you to set it first.
+
+Quick reference ~
+
+  `<localleader>a`          Archive completed items in active file
+                             (or redirect to charter archive if in
+                             a .completed.actions buffer)
+  `<localleader>A`          Archive the whole current charter
+                             (requires state: Closed in frontmatter)
+  `:ClearheadArchiveWorkspace`  Archive all closed charters at once
+
+==============================================================================
+6. KEYBINDINGS                                            *clearhead-mappings*
 
 All mappings are buffer-local and only active in `.actions` files.
 Requires `nvim_default_mappings = true` (default).
 
-`<localleader>` is `\` by default. Override with `:let maplocalleader = ","`.
+Disable with: >lua
+
+  require("clearhead").setup({ nvim_default_mappings = false })
+<
+`<localleader>` is `\` by default. Set your own: >vim
+
+  let maplocalleader = ","
+<
 
 State manipulation ~
 
-  <localleader><space>   Cycle action state (not started → in progress →
-                         blocked → completed → cancelled → not started)
-  <localleader>x         Set state to Completed  `[x]`
-  <localleader>X         Set state to Completed on current action AND all
-                         children (recursive close)
-  <localleader>-         Set state to In Progress  `[-]`
-  <localleader>=         Set state to Blocked/Awaiting  `[=]`
-  <localleader>_         Set state to Cancelled  `[_]`
-  <localleader><bs>      Set state to Not Started  `[ ]`
+  `<localleader><space>`   Cycle state: [ ] → [-] → [=] → [x] → [_] → [ ]
+  `<localleader>x`         Set Completed  `[x]` + appends `%timestamp`
+  `<localleader>X`         Recursively complete action and all children
+  `<localleader>-`         Set state to In Progress  `[-]`
+  `<localleader>=`         Set state to Blocked      `[=]`
+  `<localleader>_`         Set state to Cancelled    `[_]`
+  `<localleader><bs>`      Reset state to Not Started `[ ]`
 
 File operations ~
 
-  <localleader>f         Format and normalise current file (via LSP, falls
-                         back to CLI normalize if LSP unavailable)
-  <localleader>a         Archive completed action trees in the current file
-                         (via LSP command `clearhead/archive`, falls back
-                         to CLI). When invoked from a `.completed.actions`
-                         buffer, routes to `archive charter <name>` so the
-                         actions are swept into `archive.ttl`; requires
-                         `state: Closed` in the charter frontmatter.
-  <localleader>A         Archive the current charter. Infers the charter
-                         name from the open buffer's path. The charter
-                         frontmatter must have `state: Closed` before
-                         archiving; see |clearhead-api| for programmatic
-                         access with `force` / `dry_run` opts.
-  <localleader>o         Insert a new action below the current line at the
-                         same depth; UUID assigned on next save
-  >>                     Increase the depth of the action on the current
-                         line by one (prepend a `>` marker). The LSP will
-                         flag invalid depth transitions on the next save.
-  <<                     Decrease the depth of the action on the current
-                         line by one (remove a `>` marker). Notifies and
-                         does nothing on root-level actions.
+  `<localleader>f`   Format and normalise (LSP first; CLI normalize fallback)
+  `<localleader>a`   Archive completed/cancelled actions out of current
+                     file to `.completed.actions` (redirects to charter
+                     archive when in a `.completed.actions` buffer;
+                     requires `state: Closed` for that path)
+  `<localleader>A`   Archive the whole current charter to `archive.ttl`
+                     (requires `state: Closed` in charter frontmatter)
+  `<localleader>o`   Insert new `[ ]` below current line at same depth
+  `>>`               Increase depth of action on current line (add `>`)
+  `<<`               Decrease depth of action on current line (remove `>`)
 
 Navigation ~
 
-  <localleader>i         Open inbox file (|clearhead-config| `default_file`)
-  <localleader>p         Open workspace data directory (works with oil.nvim,
-                         snacks.nvim, netrw, etc.)
-  <localleader>P         Walk up from current buffer to find the nearest
-                         `.clearhead/` directory and open its `next.actions`
-                         file. Falls back to inbox if none found.
-  <localleader>s         Open a picker over all active action files in the
-                         global workspace and any project workspace found by
-                         walking up from cwd. Excludes `.completed.actions`
-                         and `.upcoming.actions`. Uses `vim.ui.select`
-                         (telescope / fzf-lua / snacks auto-detected).
-  <localleader>S         Same as `<localleader>s` but picks markdown charter
-                         documents (`*.md` and `*/README.md`).
+  `<localleader>i`   Open inbox
+  `<localleader>p`   Open workspace data directory (netrw / oil.nvim / etc.)
+  `<localleader>P`   Walk up to nearest `.clearhead/`, open `next.actions`
+  `<localleader>s`   Picker: active action files (global + project workspaces)
+  `<localleader>S`   Picker: markdown charter documents
 
 ==============================================================================
-6. COMMANDS                                              *clearhead-commands*
+7. COMMANDS                                              *clearhead-commands*
+
+These commands are always available regardless of the current filetype.
 
                                                        *:ClearheadInbox*
 :ClearheadInbox
-    Open the configured inbox file in the current window.
+    Open the inbox in the current window.
     Equivalent to `<localleader>i`.
 
                                                     *:ClearheadWorkspace*
 :ClearheadWorkspace
-    Open the workspace data directory in the current window. Pairs well
-    with a file explorer plugin (oil.nvim, snacks.nvim, netrw).
+    Open the workspace data directory in the current window.
+    Pairs well with a directory explorer (oil.nvim, snacks, netrw).
     Equivalent to `<localleader>p`.
 
                                                  *:ClearheadProjectRoot*
 :ClearheadProjectRoot
-    Walk upward from the current buffer's directory to find the nearest
-    `.clearhead/` directory, then open `next.actions` inside it.
+    Walk upward from the current buffer to find the nearest `.clearhead/`
+    directory, then open `charters/next.actions` inside it.
     Falls back to `:ClearheadInbox` if no `.clearhead/` is found.
     Equivalent to `<localleader>P`.
 
                                                        *:ClearheadDiff*
 :ClearheadDiff
     Open a vertical diff split of the current buffer against itself.
-    Useful for reviewing changes before saving.
+    Useful for reviewing unsaved changes before writing.
 
                                               *:ClearheadArchiveWorkspace*
 :ClearheadArchiveWorkspace
-    Archive all charters whose frontmatter carries `state: Closed`.
-    Equivalent to calling `require("clearhead").archive_workspace()`.
-    Individual charter archiving is done via `<localleader>A` or
-    |:ClearheadArchiveWorkspace|.
+    Archive all charters whose frontmatter carries `state: Closed` in
+    a single pass. Equivalent to `require("clearhead").archive_workspace()`.
 
                                                 *:ClearheadPickActions*
 :ClearheadPickActions
-    Open a `vim.ui.select` picker over all active action files across the
-    global workspace and any project `.clearhead/` found by walking up from
-    cwd. Active means `.actions` files only — `.completed.actions` and
-    `.upcoming.actions` are excluded. Equivalent to `<localleader>s`.
+    Open a `vim.ui.select` picker over all active `.actions` files across
+    the global workspace and any project `.clearhead/` found by walking up
+    from cwd. Excludes `.completed.actions` and `.upcoming.actions`.
+    Equivalent to `<localleader>s`.
 
                                                *:ClearheadPickCharters*
 :ClearheadPickCharters
     Open a `vim.ui.select` picker over all markdown charter documents
-    (`*.md` and `*/README.md`) across all workspace roots.
+    (`*.md`, `*/README.md`) across all workspace roots.
     Equivalent to `<localleader>S`.
 
 ==============================================================================
-7. LSP CAPABILITIES                                          *clearhead-lsp*
+8. LSP CAPABILITIES                                          *clearhead-lsp*
 
-The `clearhead-lsp` server (bundled with the `clearhead` CLI binary) provides
-these capabilities for any LSP-compatible editor. The plugin auto-attaches it
-to `.actions` buffers when `nvim_lsp_enable = true`.
+The `clearhead-lsp` server (bundled with the `clearhead` binary) attaches
+automatically to `.actions` buffers when `nvim_lsp_enable = true`.
 
-Start the LSP server manually: >sh
+Start manually: >sh
+
   clearhead start lsp
 <
 
   Capability            What it does ~
-  ─────────────────────────────────────────────────────────────────────────
-  Completion            Date snippets for `@`, `%`, `^` fields:
-                        "now", "today", "tomorrow"
+  ─────────────────────────────────────────────────────────────────────
+  Completion            Date snippets for `@`, `%`, `^`: "now", "today",
+                        "tomorrow", and ISO date completions
 
   Code Actions          Hydrate UUID (assign missing `#id`)
-                        Set completion date
-                        Set / derive creation date from UUIDv7 timestamp
+                        Set / backfill completion date
+                        Derive creation date from UUIDv7 timestamp
 
-  Semantic Tokens       Syntax highlighting for: id, priority, state, name,
-                        description, objective reference, context tags, dates
+  Semantic Tokens       Syntax highlighting: state, name, description,
+                        priority, objective ref, context tags, all dates,
+                        UUID
 
-  Inlay Hints           Due-date countdown: "due in 3d", "due today"
+  Inlay Hints           Due-date countdown: "due in 3d", "due today",
+                        "overdue 2d"
                         Completion age: "done 5d ago"
 
-  Go to Definition      Jump to first occurrence of an objective or context tag
+  Go to Definition      Jump to first occurrence of an objective or tag
 
   Find References       List all occurrences of an objective or context tag
 
-  Document Formatting   Normalise file: assign missing UUIDs, fix spacing,
-                        reindent children
+  Document Formatting   Normalise: assign missing UUIDs, fix spacing,
+                        sort fields into canonical order, reindent children
 
-  Diagnostics           Lint warnings on every change: missing UUID,
-                        invalid dates, unresolved references
+  Diagnostics           Lint on every keystroke: missing UUID,
+                        invalid/inconsistent dates, unresolved references,
+                        skipped depth levels, completed parent with open
+                        children, and more (see |clearhead-lsp-diagnostics|)
 
-  Execute Command       `clearhead/archive` — archive completed action trees
-                        (returns WorkspaceEdit, no buffer reload needed)
+  Execute Command       `clearhead/archive` — sweep completed action trees
+                        (returns WorkspaceEdit; no buffer reload needed)
 
   Telemetry (on save)   Diff saved state to emit action lifecycle events
 
-                                                       *clearhead-lsp-local*
-Operations that run locally (no LSP roundtrip) ~
+                                                  *clearhead-lsp-diagnostics*
+Diagnostic codes ~
 
-  State cycling         tree-sitter finds and replaces the state character
-  Smart new action      Inserts at correct depth with creation date;
-                        UUID assigned by format-on-save
-  Statusline count      Completed/total via tree-sitter query
-  Completion date stamp Appends `%<timestamp>` when state → completed
+  E001  duration without do date
+  E003  empty context tag
+  E004  orphaned child marker (> with no parent action)
+  E005  skipped hierarchy level (e.g. root → depth 2)
+  E006  invalid UUID format
+  I001  completed action without completion date
+  I002  completion date on non-completed action
+  I003  invalid priority value
+  I004  duplicate UUID in workspace
+  I006  fields out of canonical order
+  I007  high-priority action without a do date
+  I008  blocked action without a description
+  I009  child has higher priority than parent
+  W001  hierarchy depth exceeded
+  W002  completed parent with uncompleted children
+  W003  all children completed but parent is not
+  W004  missing creation date
+  W010  duplicate alias
+  W011  ambiguous short UUID reference
+
+                                                       *clearhead-lsp-local*
+Operations that bypass the LSP (tree-sitter, no roundtrip) ~
+
+  State cycling        Reads and replaces the `[ ]` character directly
+  Smart new action     Inserts at correct depth with `^` creation date;
+                       UUID filled on format-on-save
+  Depth indent/dedent  Prepends or removes one `>` on the current line
+  Statusline count     Completed / total via a tree-sitter query
+  Completion stamp     Appends `%<timestamp>` when state transitions to `[x]`
 
 ==============================================================================
-8. STATUSLINE INTEGRATION                             *clearhead-statusline*
+9. STATUSLINE INTEGRATION                             *clearhead-statusline*
 
-`require("clearhead").get_status()` returns a string like `✓ 5/12` showing
-completed vs total actions in the current buffer.
+`require("clearhead").get_status()` returns `✓ <done>/<total>` for the
+current buffer, or `""` when no actions are present.
+Computed via tree-sitter — no LSP or CLI required.
 
-Example with lualine.nvim: >lua
+lualine.nvim example: >lua
 
   require("lualine").setup({
     sections = {
@@ -283,96 +693,150 @@ Example with lualine.nvim: >lua
           function()
             return require("clearhead").get_status()
           end,
+          cond = function()
+            return vim.bo.filetype == "actions"
+          end,
         },
       },
     },
   })
 <
+heirline.nvim example: >lua
+
+  local ClearheadStatus = {
+    condition = function()
+      return vim.bo.filetype == "actions"
+    end,
+    provider = function()
+      return require("clearhead").get_status()
+    end,
+  }
+<
 
 ==============================================================================
-9. LUA API                                                   *clearhead-api*
+10. LUA API                                                  *clearhead-api*
 
-All functions are accessible via `require("clearhead").<fn>()`.
-Buffer/window arguments default to the current buffer or window when omitted.
+All public functions live on `require("clearhead")`. Buffer arguments accept
+`0` or `nil` for the current buffer. Window arguments accept `0` for the
+current window.
 
                                                     *clearhead.setup()*
 `setup({opts})`
     Initialise the plugin. Must be called once. See |clearhead-config|.
 
+                                               *clearhead.cycle_state()*
+`cycle_state(bufnr, linenr)`
+    Cycle the state on the given 0-indexed line in order:
+    `[ ]` → `[-]` → `[=]` → `[x]` → `[_]` → `[ ]`
+    Appends `%<timestamp>` when cycling into `[x]`.
+
+                                                *clearhead.set_state()*
+`set_state(bufnr, linenr, state)`
+    Set the state on `linenr` to `state` (one of `" "`, `"-"`, `"="`,
+    `"x"`, `"_"`). Appends `%<timestamp>` when state is `"x"`.
+
+                                           *clearhead.set_state_tree()*
+`set_state_tree(bufnr, linenr, state)`
+    Set the state on `linenr` and recursively on all child actions that
+    fall within the same action node. Useful for closing a whole subtree.
+
+                                           *clearhead.smart_new_action()*
+`smart_new_action(bufnr, linenr)`
+    Insert a new `[ ]` line below `linenr` at the same depth as the
+    current action. Adds a `^<timestamp>` and enters insert mode.
+    UUID is assigned on next save by format-on-save.
+
+                                              *clearhead.indent_action()*
+`indent_action(bufnr, linenr)`
+    Increase the depth of the action on `linenr` by one. Prepends a `>`
+    marker directly before the existing marker sequence. The LSP validates
+    the resulting depth on next save.
+
+                                              *clearhead.dedent_action()*
+`dedent_action(bufnr, linenr)`
+    Decrease the depth of the action on `linenr` by one. Removes one `>`
+    marker. Notifies and does nothing when the action is already at root.
+
                                                    *clearhead.archive()*
 `archive([bufnr])`
-    Archive completed action trees in `bufnr`. Delegates to the LSP
+    Sweep completed and cancelled actions from `bufnr` to
+    `<charter>.completed.actions`. Delegates to the LSP
     `clearhead/archive` command when attached; falls back to the CLI.
-    Reloads the buffer on success.
+
+    When `bufnr` points to a `.completed.actions` file the function
+    redirects to `archive charter <name>` (see |clearhead.archive_charter()|)
+    to correctly send those actions to `archive.ttl`.
 
                                            *clearhead.archive_charter()*
 `archive_charter([{opts}])`
-    Archive the charter inferred from the current buffer path. The charter
-    frontmatter must carry `state: Closed` unless `opts.force = true`.
+    Archive the charter inferred from the current buffer path.
+    Requires `state: Closed` in the charter's frontmatter.
 
     opts ~
       `force`    boolean  Archive even if open actions remain (default: false)
-      `dry_run`  boolean  Print what would be archived without writing
-                          (default: false)
+      `dry_run`  boolean  Print plan without writing (default: false)
 
                                          *clearhead.archive_workspace()*
 `archive_workspace([{opts}])`
-    Sweep all charters with `state: Closed` and archive them in one pass.
-    Accepts the same `force` and `dry_run` opts as |clearhead.archive_charter()|.
+    Sweep all charters carrying `state: Closed` in one pass.
+    Accepts the same opts as |clearhead.archive_charter()|.
 
                                                    *clearhead.format()*
 `format([bufnr])`
-    Format `bufnr` via the attached LSP client. If no client is attached yet
-    but one exists for the server, attaches first then formats. Falls back to
-    |clearhead.normalize()| when `nvim_auto_normalize = true`.
+    Format `bufnr` via the attached LSP. If no client is attached yet
+    but the server is running, attaches first then formats. Falls back
+    to |clearhead.normalize()| when `nvim_auto_normalize = true`.
 
                                                 *clearhead.normalize()*
 `normalize([bufnr])`
-    Run `clearhead normalize file --write` on the buffer's file to assign
-    missing UUIDs and fix spacing. Reloads the buffer via `checktime` on
-    success. Does nothing if the buffer has no backing file or the binary
-    is not found.
+    Run `clearhead normalize file --write` to assign missing UUIDs and
+    fix spacing. Reloads the buffer via `checktime` on success.
+    No-ops if the buffer has no backing file or the binary is not found.
 
                                                *clearhead.get_status()*
 `get_status()`
-    Returns a string like `✓ 5/12` (completed / total) for the current
-    buffer, computed via tree-sitter. See |clearhead-statusline|.
-
-                                              *clearhead.indent_action()*
-`indent_action([bufnr], [linenr])`
-    Increase the depth of the action on `linenr` (0-indexed) by one.
-    Prepends a `>` marker directly before the existing marker sequence.
-    The LSP will validate the resulting depth on next save.
-
-                                              *clearhead.dedent_action()*
-`dedent_action([bufnr], [linenr])`
-    Decrease the depth of the action on `linenr` by one. Removes one `>`
-    marker. Notifies with a warning if the action is already at root depth.
+    Returns `"✓ <done>/<total>"` for the current buffer via tree-sitter,
+    or `""` if no actions are present. See |clearhead-statusline|.
 
                                            *clearhead.pick_action_file()*
 `pick_action_file()`
-    Open a `vim.ui.select` picker over all active action files across the
-    global workspace and any project `.clearhead/` found by walking up from
-    cwd. Excludes `.completed.actions` and `.upcoming.actions`. With
-    multiple workspace scopes each label is prefixed `[scope]` to keep
-    fuzzy search useful.
+    Open a `vim.ui.select` picker over all active `.actions` files across
+    the global workspace and any project `.clearhead/` found by walking up
+    from cwd. Excludes `.completed.actions` and `.upcoming.actions`.
+    With multiple scopes each entry is prefixed `[scope]` for fuzzy search.
+    Delegates to telescope / fzf-lua / snacks if installed.
 
                                             *clearhead.pick_charter_doc()*
 `pick_charter_doc()`
     Open a `vim.ui.select` picker over all markdown charter documents
-    (`*.md`, `*/README.md`) across all workspace roots. Directory-form
-    charters display as the directory name rather than `README`.
+    (`*.md`, `*/README.md`) across all workspace roots.
+    Directory-form charters display as the directory name.
 
                                            *clearhead.get_conform_opts()*
 `get_conform_opts()`
     Returns the conform.nvim formatter table for the `actions` filetype.
     See |clearhead-conform|.
 
-==============================================================================
-10. CONFORM.NVIM INTEGRATION                             *clearhead-conform*
+                                                   *clearhead.open_inbox()*
+`open_inbox(winnr)`
+    Open the inbox file in window `winnr`. Uses `nvim_inbox_file` if set,
+    otherwise `data_dir/charters/<default_file>`.
 
-`require("clearhead").get_conform_opts()` returns the formatter config for
-conform.nvim: >lua
+                                               *clearhead.open_workspace()*
+`open_workspace(winnr)`
+    Open the workspace data directory in window `winnr`.
+
+                                            *clearhead.open_project_root()*
+`open_project_root(winnr)`
+    Walk upward from the buffer in `winnr` to find the nearest
+    `.clearhead/`, then open `charters/next.actions` inside it.
+    Falls back to |clearhead.open_inbox()| if none is found.
+
+==============================================================================
+11. CONFORM.NVIM INTEGRATION                             *clearhead-conform*
+
+`get_conform_opts()` returns a formatter config table ready to merge into
+conform.nvim's setup: >lua
 
   local clearhead = require("clearhead")
 
@@ -381,12 +845,12 @@ conform.nvim: >lua
     formatters       = clearhead.get_conform_opts().formatters,
   })
 <
-This registers `clearhead` as a formatter for the `actions` filetype,
+This registers `clearhead` as the formatter for the `actions` filetype,
 running `clearhead format file $FILENAME` on save.
 
 Note: when `nvim_lsp_enable = true` (default), LSP formatting takes
-precedence and conform integration is not needed unless you prefer
-conform's workflow.
+precedence. The conform integration is only needed if you prefer conform's
+workflow or have disabled the LSP.
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:
