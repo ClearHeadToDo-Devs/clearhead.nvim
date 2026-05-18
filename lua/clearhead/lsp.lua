@@ -13,7 +13,7 @@ M.attach = function(bufnr)
 		if not binary_warned then
 			binary_warned = true
 			vim.notify(
-				"clearhead_cli binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.",
+				"clearhead binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.",
 				vim.log.levels.WARN
 			)
 		end

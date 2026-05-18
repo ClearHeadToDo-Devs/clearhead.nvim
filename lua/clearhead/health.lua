@@ -21,10 +21,10 @@ end
 
 check_neovim = function()
   vim.health.start("clearhead: Neovim")
-  if vim.fn.has("nvim-0.9") == 1 then
-    vim.health.ok("Neovim >= 0.9")
+  if vim.fn.has("nvim-0.10") == 1 then
+    vim.health.ok("Neovim >= 0.10")
   else
-    vim.health.error("Neovim >= 0.9 required", "Upgrade Neovim")
+    vim.health.error("Neovim >= 0.10 required", "Upgrade Neovim")
   end
 end
 
@@ -33,7 +33,7 @@ check_cli = function()
   local bin = config.get_bin_path()
   if not bin then
     vim.health.error(
-      "clearhead_cli not found",
+      "clearhead not found",
       "Run: cargo install --path . inside clearhead-cli/"
     )
     return
@@ -94,7 +94,7 @@ check_config = function()
     else
       vim.health.error(
         "LSP enabled but binary not found",
-        "Install clearhead_cli or set nvim_lsp_binary_path in setup()"
+        "Install clearhead or set nvim_lsp_binary_path in setup()"
       )
     end
   else

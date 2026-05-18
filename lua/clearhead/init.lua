@@ -117,6 +117,7 @@ M.setup = function(opts)
 				-- File operations
 				map("<localleader>f", M.format, "Format action file")
 				map("<localleader>a", M.archive, "Archive completed actions")
+				map("<localleader>A", M.archive_charter, "Archive current charter")
 				map("<localleader>o", function()
 					M.smart_new_action(0, vim.fn.line(".") - 1)
 				end, "New action below")
@@ -145,6 +146,9 @@ M.setup = function(opts)
 	end, {})
 	vim.api.nvim_create_user_command("ClearheadDiff", function()
 		vim.cmd("vertical diffsplit %")
+	end, {})
+	vim.api.nvim_create_user_command("ClearheadArchiveWorkspace", function()
+		M.archive_workspace()
 	end, {})
 end
 
@@ -184,7 +188,7 @@ M.archive = function(bufnr)
 	vim.api.nvim_buf_call(bufnr, function()
 		vim.cmd("write")
 	end)
-	vim.fn.jobstart({ bin, "archive", "plans", "--file", filename }, {
+	vim.fn.jobstart({ bin, "archive", "actions", "--file", filename }, {
 		on_exit = function(_, exit_code)
 			if exit_code == 0 then
 				vim.schedule(function()
@@ -199,6 +203,94 @@ M.archive = function(bufnr)
 		end,
 		on_stdout = on_output(nil),
 		on_stderr = on_output("Archive error: "),
+	})
+end
+
+--- Archive the current charter (requires state: Closed in its frontmatter).
+--- Infers the charter from the currently open buffer's file path.
+--- Pass force=true to sweep even if open actions remain.
+M.archive_charter = function(opts)
+	opts = opts or {}
+	local bin = config.get_bin_path()
+	if not bin then
+		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
+		return
+	end
+
+	-- Infer charter name from the current buffer path.
+	local buf_path = vim.api.nvim_buf_get_name(0)
+	local charter_name = nil
+	if buf_path ~= "" then
+		-- Strip the file extension and use the stem as the charter query.
+		-- For directory-form charters (health/next.actions) use the parent dir name.
+		local filename = vim.fn.fnamemodify(buf_path, ":t")
+		if filename == "next.actions" then
+			charter_name = vim.fn.fnamemodify(buf_path, ":h:t")
+		else
+			charter_name = vim.fn.fnamemodify(buf_path, ":t:r")
+			-- Strip .completed / .upcoming suffixes
+			charter_name = charter_name:gsub("%.completed$", ""):gsub("%.upcoming$", "")
+		end
+	end
+
+	if not charter_name or charter_name == "" then
+		vim.notify("Cannot infer charter from current buffer.", vim.log.levels.ERROR)
+		return
+	end
+
+	local cmd = { bin, "archive", "charter", charter_name }
+	if opts.force then
+		table.insert(cmd, "--force")
+	end
+	if opts.dry_run then
+		table.insert(cmd, "--dry-run")
+	end
+
+	vim.fn.jobstart(cmd, {
+		on_exit = function(_, exit_code)
+			vim.schedule(function()
+				if exit_code == 0 then
+					vim.notify("Charter '" .. charter_name .. "' archived.")
+				else
+					vim.notify("Archive charter failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
+				end
+			end)
+		end,
+		on_stdout = on_output(nil),
+		on_stderr = on_output("Archive charter error: "),
+	})
+end
+
+--- Archive all charters whose frontmatter carries `state: Closed`.
+--- This is the workspace-wide sweep hotkey.
+M.archive_workspace = function(opts)
+	opts = opts or {}
+	local bin = config.get_bin_path()
+	if not bin then
+		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
+		return
+	end
+
+	local cmd = { bin, "archive", "charter", "--closed" }
+	if opts.force then
+		table.insert(cmd, "--force")
+	end
+	if opts.dry_run then
+		table.insert(cmd, "--dry-run")
+	end
+
+	vim.fn.jobstart(cmd, {
+		on_exit = function(_, exit_code)
+			vim.schedule(function()
+				if exit_code == 0 then
+					vim.notify("Workspace archive complete.")
+				else
+					vim.notify("Workspace archive failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
+				end
+			end)
+		end,
+		on_stdout = on_output(nil),
+		on_stderr = on_output("Archive workspace error: "),
 	})
 end
 
@@ -242,7 +334,7 @@ M.normalize = function(bufnr)
 				end)
 			end
 		end,
-		on_stderr = on_output("clearhead_cli normalize error: "),
+		on_stderr = on_output("clearhead normalize error: "),
 	})
 end
 
@@ -257,7 +349,7 @@ M.open_inbox = function(winnr)
 	if config.values.nvim_inbox_file and config.values.nvim_inbox_file ~= "" then
 		path = config.expand_path(config.values.nvim_inbox_file)
 	else
-		path = config.expand_path(config.values.data_dir) .. "/" .. config.values.default_file
+		path = config.expand_path(config.values.data_dir) .. "/charters/" .. config.values.default_file
 	end
 	open_file_in_win(winnr, path)
 end
@@ -303,10 +395,10 @@ end
 
 M.get_conform_opts = function()
 	return {
-		formatters_by_ft = { actions = { "clearhead_cli" } },
+		formatters_by_ft = { actions = { "clearhead" } },
 		formatters = {
-			clearhead_cli = {
-				command = "clearhead_cli",
+			clearhead = {
+				command = "clearhead",
 				args = { "format", "file", "$FILENAME" },
 				stdin = false,
 			},

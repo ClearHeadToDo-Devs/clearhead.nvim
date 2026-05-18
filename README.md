@@ -11,7 +11,7 @@ Now, you are interesting because this is orthogonal to the [CLI](https://github.
 
 ## LSP Capabilities
 
-The `clearhead-lsp` server (bundled in `clearhead_cli`) provides the following to any editor that speaks LSP:
+The `clearhead-lsp` server (bundled in `clearhead`) provides the following to any editor that speaks LSP:
 
 | Capability | What it does |
 |---|---|
@@ -56,7 +56,7 @@ require('clearhead').setup({
   nvim_auto_normalize = true,    -- Ensure UUIDs exist on save
   nvim_format_on_save = true,    -- Format spacing on save
   nvim_lsp_enable = true,        -- Automatically start clearhead-lsp
-  nvim_lsp_binary_path = "/path/to/clearhead_cli", -- Optional explicit path
+  nvim_lsp_binary_path = "/path/to/clearhead", -- Optional explicit path
   nvim_default_mappings = true,  -- Set to false to disable default mappings
 })
 ```
@@ -104,7 +104,7 @@ You can override any setting via environment variables:
 
 ### Usage with conform.nvim
 
-If you use `conform.nvim` for formatting, you can integrate `clearhead_cli` easily:
+If you use `conform.nvim` for formatting, you can integrate `clearhead` easily:
 
 ```lua
 local clearhead = require('clearhead')

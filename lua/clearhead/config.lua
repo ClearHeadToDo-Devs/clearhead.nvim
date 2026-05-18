@@ -85,10 +85,10 @@ M.get_bin_path = function()
 		local expanded = expand_path(M.values.nvim_lsp_binary_path)
 		return vim.fn.executable(expanded) == 1 and expanded or nil
 	end
-	if vim.fn.executable("clearhead_cli") == 1 then
-		return "clearhead_cli"
+	if vim.fn.executable("clearhead") == 1 then
+		return "clearhead"
 	end
-	local cargo_bin = vim.fn.expand("~") .. "/.cargo/bin/clearhead_cli"
+	local cargo_bin = vim.fn.expand("~") .. "/.cargo/bin/clearhead"
 	return vim.fn.executable(cargo_bin) == 1 and cargo_bin or nil
 end
 

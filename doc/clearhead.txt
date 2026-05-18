@@ -15,7 +15,8 @@ CONTENTS                                                  *clearhead-contents*
   6. Commands ....................... |clearhead-commands|
   7. LSP Capabilities ............... |clearhead-lsp|
   8. Statusline Integration ......... |clearhead-statusline|
-  9. Conform.nvim Integration ....... |clearhead-conform|
+  9. Lua API ........................ |clearhead-api|
+  10. Conform.nvim Integration ...... |clearhead-conform|
 
 ==============================================================================
 1. INTRODUCTION                                             *clearhead-intro*
@@ -35,11 +36,11 @@ See the ClearHead specifications for the `.actions` file format:
 ==============================================================================
 2. REQUIREMENTS                                        *clearhead-requirements*
 
-  - Neovim 0.11+
+  - Neovim 0.10+
   - tree-sitter support enabled
   - tree-sitter-actions grammar installed
   - `clearhead` CLI (optional but recommended for LSP, formatting, archiving)
-    Install: `cargo install clearhead_cli`
+    Install: `cargo install clearhead`
     Or build from source: `cd clearhead-cli && cargo build`
 
 ==============================================================================
@@ -108,8 +109,8 @@ Binary path resolution ~
 
 The plugin looks for the `clearhead` binary in this order:
   1. `nvim_lsp_binary_path` if set and executable
-  2. `clearhead_cli` on `$PATH`
-  3. `~/.cargo/bin/clearhead_cli`
+  2. `clearhead` on `$PATH`
+  3. `~/.cargo/bin/clearhead`
 
 ==============================================================================
 5. KEYBINDINGS                                            *clearhead-mappings*
@@ -135,8 +136,14 @@ File operations ~
 
   <localleader>f         Format and normalise current file (via LSP, falls
                          back to CLI normalize if LSP unavailable)
-  <localleader>a         Archive completed action trees (via LSP command
-                         `clearhead/archive`, falls back to CLI)
+  <localleader>a         Archive completed action trees in the current file
+                         (via LSP command `clearhead/archive`, falls back
+                         to CLI)
+  <localleader>A         Archive the current charter. Infers the charter
+                         name from the open buffer's path. The charter
+                         frontmatter must have `state: Closed` before
+                         archiving; see |clearhead-api| for programmatic
+                         access with `force` / `dry_run` opts.
   <localleader>o         Insert a new action below the current line at the
                          same depth; UUID assigned on next save
 
@@ -174,6 +181,13 @@ Navigation ~
 :ClearheadDiff
     Open a vertical diff split of the current buffer against itself.
     Useful for reviewing changes before saving.
+
+                                              *:ClearheadArchiveWorkspace*
+:ClearheadArchiveWorkspace
+    Archive all charters whose frontmatter carries `state: Closed`.
+    Equivalent to calling `require("clearhead").archive_workspace()`.
+    Individual charter archiving is done via `<localleader>A` or
+    |:ClearheadArchiveWorkspace|.
 
 ==============================================================================
 7. LSP CAPABILITIES                                          *clearhead-lsp*
@@ -247,7 +261,61 @@ Example with lualine.nvim: >lua
 <
 
 ==============================================================================
-9. CONFORM.NVIM INTEGRATION                              *clearhead-conform*
+9. LUA API                                                   *clearhead-api*
+
+All functions are accessible via `require("clearhead").<fn>()`.
+Buffer/window arguments default to the current buffer or window when omitted.
+
+                                                    *clearhead.setup()*
+`setup({opts})`
+    Initialise the plugin. Must be called once. See |clearhead-config|.
+
+                                                   *clearhead.archive()*
+`archive([bufnr])`
+    Archive completed action trees in `bufnr`. Delegates to the LSP
+    `clearhead/archive` command when attached; falls back to the CLI.
+    Reloads the buffer on success.
+
+                                           *clearhead.archive_charter()*
+`archive_charter([{opts}])`
+    Archive the charter inferred from the current buffer path. The charter
+    frontmatter must carry `state: Closed` unless `opts.force = true`.
+
+    opts ~
+      `force`    boolean  Archive even if open actions remain (default: false)
+      `dry_run`  boolean  Print what would be archived without writing
+                          (default: false)
+
+                                         *clearhead.archive_workspace()*
+`archive_workspace([{opts}])`
+    Sweep all charters with `state: Closed` and archive them in one pass.
+    Accepts the same `force` and `dry_run` opts as |clearhead.archive_charter()|.
+
+                                                   *clearhead.format()*
+`format([bufnr])`
+    Format `bufnr` via the attached LSP client. If no client is attached yet
+    but one exists for the server, attaches first then formats. Falls back to
+    |clearhead.normalize()| when `nvim_auto_normalize = true`.
+
+                                                *clearhead.normalize()*
+`normalize([bufnr])`
+    Run `clearhead normalize file --write` on the buffer's file to assign
+    missing UUIDs and fix spacing. Reloads the buffer via `checktime` on
+    success. Does nothing if the buffer has no backing file or the binary
+    is not found.
+
+                                               *clearhead.get_status()*
+`get_status()`
+    Returns a string like `✓ 5/12` (completed / total) for the current
+    buffer, computed via tree-sitter. See |clearhead-statusline|.
+
+                                           *clearhead.get_conform_opts()*
+`get_conform_opts()`
+    Returns the conform.nvim formatter table for the `actions` filetype.
+    See |clearhead-conform|.
+
+==============================================================================
+10. CONFORM.NVIM INTEGRATION                             *clearhead-conform*
 
 `require("clearhead").get_conform_opts()` returns the formatter config for
 conform.nvim: >lua
@@ -259,7 +327,7 @@ conform.nvim: >lua
     formatters       = clearhead.get_conform_opts().formatters,
   })
 <
-This registers `clearhead_cli` as a formatter for the `actions` filetype,
+This registers `clearhead` as a formatter for the `actions` filetype,
 running `clearhead format file $FILENAME` on save.
 
 Note: when `nvim_lsp_enable = true` (default), LSP formatting takes
