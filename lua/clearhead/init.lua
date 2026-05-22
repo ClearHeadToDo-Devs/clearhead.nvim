@@ -310,17 +310,12 @@ end
 --- Pass force=true to sweep even if open actions remain.
 M.archive_charter = function(opts)
 	opts = opts or {}
-	local bin = config.get_bin_path()
-	if not bin then
-		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
-		return
-	end
 
 	-- Infer charter name from the current buffer path.
-	local buf_path = vim.api.nvim_buf_get_name(0)
+	local bufnr = vim.api.nvim_get_current_buf()
+	local buf_path = vim.api.nvim_buf_get_name(bufnr)
 	local charter_name = nil
 	if buf_path ~= "" then
-		-- Strip the file extension and use the stem as the charter query.
 		-- For directory-form charters (health/next.actions) use the parent dir name.
 		local filename = vim.fn.fnamemodify(buf_path, ":t")
 		if filename == "next.actions" then
@@ -334,6 +329,38 @@ M.archive_charter = function(opts)
 
 	if not charter_name or charter_name == "" then
 		vim.notify("Cannot infer charter from current buffer.", vim.log.levels.ERROR)
+		return
+	end
+
+	-- Prefer LSP path so we stay in-process without spawning a subprocess.
+	local clients = vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr })
+	local client = clients[1]
+	if client then
+		client:request("workspace/executeCommand", {
+			command = "clearhead/archiveCharter",
+			arguments = {
+				vim.uri_from_bufnr(bufnr),
+				charter_name,
+				opts.force or false,
+				opts.dry_run or false,
+			},
+		}, function(err)
+			if err then
+				vim.schedule(function()
+					vim.notify(
+						"Archive charter failed: " .. (err.message or "unknown error"),
+						vim.log.levels.ERROR
+					)
+				end)
+			end
+		end, bufnr)
+		return
+	end
+
+	-- CLI fallback when LSP is not attached.
+	local bin = config.get_bin_path()
+	if not bin then
+		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
 		return
 	end
 
