@@ -34,6 +34,24 @@ local function on_output(prefix)
 	end
 end
 
+--- Run a clearhead CLI command and notify on completion.
+--- error_label is the human verb phrase used in failure messages, e.g. "Close charter".
+local function run_charter_cmd(cmd, success_msg, error_label)
+	vim.fn.jobstart(cmd, {
+		on_exit = function(_, exit_code)
+			vim.schedule(function()
+				if exit_code == 0 then
+					vim.notify(success_msg)
+				else
+					vim.notify(error_label .. " failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
+				end
+			end)
+		end,
+		on_stdout = on_output(nil),
+		on_stderr = on_output(error_label .. " error: "),
+	})
+end
+
 --- Open a file path in the given window without changing global window focus.
 --- winnr: window handle (0 = current window)
 --- path: absolute file path
@@ -176,6 +194,7 @@ M.setup = function(opts)
 				map("<localleader>f", M.format, "Format action file")
 				map("<localleader>a", M.archive, "Archive completed actions")
 				map("<localleader>A", M.archive_charter, "Archive current charter")
+				map("<localleader>C", M.close_charter, "Close current charter")
 				map("<localleader>o", function()
 					M.smart_new_action(0, vim.fn.line(".") - 1)
 				end, "New action below")
@@ -308,92 +327,62 @@ end
 --- Archive the current charter (requires state: Closed in its frontmatter).
 --- Infers the charter from the currently open buffer's file path.
 --- Pass force=true to sweep even if open actions remain.
+--- Close the charter inferred from the current buffer (sets state to Closed,
+--- creates the .md file if it doesn't exist yet).
+M.close_charter = function(opts)
+	opts = opts or {}
+	local buf_path = vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
+	if buf_path == "" then
+		vim.notify("No file in current buffer.", vim.log.levels.ERROR)
+		return
+	end
+	local bin = config.get_bin_path()
+	if not bin then
+		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
+		return
+	end
+	local cmd = { bin, "close", "charter", "--file", buf_path }
+	if opts.dry_run then table.insert(cmd, "--dry-run") end
+	run_charter_cmd(cmd, "Charter closed.", "Close charter")
+end
+
 M.archive_charter = function(opts)
 	opts = opts or {}
-
-	-- Infer charter name from the current buffer path.
 	local bufnr = vim.api.nvim_get_current_buf()
 	local buf_path = vim.api.nvim_buf_get_name(bufnr)
-	local charter_name = nil
-	if buf_path ~= "" then
-		local filename = vim.fn.fnamemodify(buf_path, ":t")
-		if filename == "next.actions" then
-			local parent = vim.fn.fnamemodify(buf_path, ":h:t")
-			-- "charters/" is the workspace root container, not a sub-charter name.
-			-- Root next.actions belongs to the workspace itself — not archivable this way.
-			if parent == "charters" then
-				vim.notify(
-					"Root workspace charter cannot be archived. Open a sub-charter's actions file instead.",
-					vim.log.levels.WARN
-				)
-				return
-			end
-			charter_name = parent
-		else
-			charter_name = vim.fn.fnamemodify(buf_path, ":t:r")
-			-- Strip .completed / .upcoming suffixes
-			charter_name = charter_name:gsub("%.completed$", ""):gsub("%.upcoming$", "")
-		end
-	end
-
-	if not charter_name or charter_name == "" then
-		vim.notify("Cannot infer charter from current buffer.", vim.log.levels.ERROR)
+	if buf_path == "" then
+		vim.notify("No file in current buffer.", vim.log.levels.ERROR)
 		return
 	end
 
-	-- Prefer LSP path so we stay in-process without spawning a subprocess.
+	-- Prefer LSP path (in-process, no subprocess spawn).
 	local clients = vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr })
 	local client = clients[1]
 	if client then
 		client:request("workspace/executeCommand", {
 			command = "clearhead/archiveCharter",
-			arguments = {
-				vim.uri_from_bufnr(bufnr),
-				charter_name,
-				opts.force or false,
-				opts.dry_run or false,
-			},
+			-- Pass empty string for charter_name: LSP derives it from the URI.
+			arguments = { vim.uri_from_bufnr(bufnr), "", opts.force or false, opts.dry_run or false },
 		}, function(err)
 			if err then
 				vim.schedule(function()
-					vim.notify(
-						"Archive charter failed: " .. (err.message or "unknown error"),
-						vim.log.levels.ERROR
-					)
+					vim.notify("Archive charter failed: " .. (err.message or "unknown error"), vim.log.levels.ERROR)
 				end)
 			end
 		end, bufnr)
 		return
 	end
 
-	-- CLI fallback when LSP is not attached.
 	local bin = config.get_bin_path()
 	if not bin then
 		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
 		return
 	end
 
-	local cmd = { bin, "archive", "charter", charter_name }
-	if opts.force then
-		table.insert(cmd, "--force")
-	end
-	if opts.dry_run then
-		table.insert(cmd, "--dry-run")
-	end
-
-	vim.fn.jobstart(cmd, {
-		on_exit = function(_, exit_code)
-			vim.schedule(function()
-				if exit_code == 0 then
-					vim.notify("Charter '" .. charter_name .. "' archived.")
-				else
-					vim.notify("Archive charter failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
-				end
-			end)
-		end,
-		on_stdout = on_output(nil),
-		on_stderr = on_output("Archive charter error: "),
-	})
+	local cmd = { bin, "archive", "charter", "--file", buf_path }
+	if opts.force then table.insert(cmd, "--force") end
+	if opts.dry_run then table.insert(cmd, "--dry-run") end
+	run_charter_cmd(cmd, "Charter archived.", "Archive charter")
 end
 
 --- Archive all charters whose frontmatter carries `state: Closed`.
