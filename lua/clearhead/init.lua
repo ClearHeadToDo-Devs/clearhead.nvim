@@ -316,10 +316,19 @@ M.archive_charter = function(opts)
 	local buf_path = vim.api.nvim_buf_get_name(bufnr)
 	local charter_name = nil
 	if buf_path ~= "" then
-		-- For directory-form charters (health/next.actions) use the parent dir name.
 		local filename = vim.fn.fnamemodify(buf_path, ":t")
 		if filename == "next.actions" then
-			charter_name = vim.fn.fnamemodify(buf_path, ":h:t")
+			local parent = vim.fn.fnamemodify(buf_path, ":h:t")
+			-- "charters/" is the workspace root container, not a sub-charter name.
+			-- Root next.actions belongs to the workspace itself — not archivable this way.
+			if parent == "charters" then
+				vim.notify(
+					"Root workspace charter cannot be archived. Open a sub-charter's actions file instead.",
+					vim.log.levels.WARN
+				)
+				return
+			end
+			charter_name = parent
 		else
 			charter_name = vim.fn.fnamemodify(buf_path, ":t:r")
 			-- Strip .completed / .upcoming suffixes
