@@ -122,4 +122,26 @@ describe("clearhead", function()
     local workspace = clearhead._testing["charter-workspace-root"](readme)
     assert.are.equal(tmp .. "/.clearhead", workspace)
   end)
+
+  it("should register commands without requiring setup", function()
+    clearhead._testing["plugin-init"]()
+    assert.are.equal(2, vim.fn.exists(":ClearheadInbox"))
+    assert.are.equal(2, vim.fn.exists(":ClearheadPickActions"))
+  end)
+
+  it("should apply actions buffer defaults from ftplugin hooks", function()
+    clearhead._testing["load-config-internal"]({
+      nvim_indent_style = "tabs",
+      nvim_indent_width = 2,
+    })
+
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(bufnr)
+    clearhead._testing["setup-actions-buffer"](bufnr)
+
+    assert.are.equal(2, vim.bo[bufnr].shiftwidth)
+    assert.are.equal(2, vim.bo[bufnr].tabstop)
+    assert.are.equal(2, vim.bo[bufnr].softtabstop)
+    assert.is_false(vim.bo[bufnr].expandtab)
+  end)
 end)

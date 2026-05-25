@@ -3,6 +3,17 @@ local lsp = require("clearhead.lsp")
 local actions = require("clearhead.actions")
 
 local M = {}
+local bootstrap_done = false
+local config_loaded = false
+
+local function ensure_config_loaded()
+	if not config_loaded then
+		config.load()
+		config_loaded = true
+	end
+end
+
+ensure_config_loaded()
 
 -- Re-export the actions API so callers only need to require("clearhead").
 M.cycle_state = actions.cycle_state
@@ -320,24 +331,32 @@ local function set_action_mappings(bufnr)
 end
 
 -- ---------------------------------------------------------------------------
--- Setup
+-- Setup / bootstrap
 -- ---------------------------------------------------------------------------
 
 M.setup = function(opts)
 	config.load(opts)
-	lsp.setup()
+	config_loaded = true
+	M._plugin_init()
+	return config.values
+end
+
+M._plugin_init = function()
+	if bootstrap_done then
+		return
+	end
 
 	local group = vim.api.nvim_create_augroup("clearhead", { clear = true })
 
-	if config.values.nvim_format_on_save then
-		vim.api.nvim_create_autocmd("BufWritePre", {
-			pattern = "*.actions",
-			group = group,
-			callback = function(args)
+	vim.api.nvim_create_autocmd("BufWritePre", {
+		pattern = "*.actions",
+		group = group,
+		callback = function(args)
+			if config.values.nvim_format_on_save then
 				M.format(args.buf)
-			end,
-		})
-	end
+			end
+		end,
+	})
 
 	vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "CursorHoldI" }, {
 		pattern = "*.actions",
@@ -357,62 +376,78 @@ M.setup = function(opts)
 		end,
 	})
 
-	vim.api.nvim_create_autocmd("FileType", {
-		pattern = "actions",
-		group = group,
-		callback = function(args)
-			vim.opt_local.autoread = true
-			vim.opt_local.conceallevel = 2
-			vim.opt_local.concealcursor = "nc"
+	local function create_command(name, fn)
+		if vim.fn.exists(":" .. name) == 0 then
+			vim.api.nvim_create_user_command(name, fn, {})
+		end
+	end
 
-			local indent_width = tonumber(config.values.nvim_indent_width) or 4
-			local indent_style = config.values.nvim_indent_style == "tabs" and "tabs" or "spaces"
-			vim.opt_local.shiftwidth = indent_width
-			vim.opt_local.tabstop = indent_width
-			vim.opt_local.softtabstop = indent_width
-			vim.opt_local.expandtab = (indent_style == "spaces")
-
-			if config.values.nvim_default_mappings then
-				set_action_mappings(args.buf)
-			end
-		end,
-	})
-
-	vim.api.nvim_create_autocmd("FileType", {
-		pattern = "markdown",
-		group = group,
-		callback = function(args)
-			if not config.values.nvim_default_mappings then
-				return
-			end
-			local path = vim.api.nvim_buf_get_name(args.buf)
-			if charter_workspace_root(path) then
-				set_charter_mappings(args.buf)
-			end
-		end,
-	})
-
-	vim.api.nvim_create_user_command("ClearheadInbox", function()
+	create_command("ClearheadInbox", function()
 		M.open_inbox(0)
-	end, {})
-	vim.api.nvim_create_user_command("ClearheadWorkspace", function()
+	end)
+	create_command("ClearheadWorkspace", function()
 		M.open_workspace(0)
-	end, {})
-	vim.api.nvim_create_user_command("ClearheadProjectRoot", function()
+	end)
+	create_command("ClearheadProjectRoot", function()
 		M.open_project_root(0)
-	end, {})
-	vim.api.nvim_create_user_command("ClearheadDiff", function()
+	end)
+	create_command("ClearheadDiff", function()
 		vim.cmd("vertical diffsplit %")
-	end, {})
-	vim.api.nvim_create_user_command("ClearheadArchiveWorkspace", function()
+	end)
+	create_command("ClearheadArchiveWorkspace", function()
 		M.archive_workspace()
-	end, {})
-	vim.api.nvim_create_user_command("ClearheadPickActions", function()
+	end)
+	create_command("ClearheadPickActions", function()
 		M.pick_action_file()
-	end, {})
-	vim.api.nvim_create_user_command("ClearheadPickCharters", function()
+	end)
+	create_command("ClearheadPickCharters", function()
 		M.pick_charter_doc()
-	end, {})
+	end)
+
+	bootstrap_done = true
+end
+
+M._setup_actions_buffer = function(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
+	if vim.b[bufnr].clearhead_actions_initialized then
+		return
+	end
+
+	lsp.setup()
+	vim.api.nvim_buf_call(bufnr, function()
+		vim.opt_local.autoread = true
+		vim.opt_local.conceallevel = 2
+		vim.opt_local.concealcursor = "nc"
+
+		local indent_width = tonumber(config.values.nvim_indent_width) or 4
+		local indent_style = config.values.nvim_indent_style == "tabs" and "tabs" or "spaces"
+		vim.opt_local.shiftwidth = indent_width
+		vim.opt_local.tabstop = indent_width
+		vim.opt_local.softtabstop = indent_width
+		vim.opt_local.expandtab = (indent_style == "spaces")
+	end)
+
+	if config.values.nvim_default_mappings then
+		set_action_mappings(bufnr)
+	end
+
+	vim.b[bufnr].clearhead_actions_initialized = true
+end
+
+M._setup_markdown_buffer = function(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
+	if vim.b[bufnr].clearhead_markdown_initialized then
+		return
+	end
+	if not config.values.nvim_default_mappings then
+		return
+	end
+
+	local path = vim.api.nvim_buf_get_name(bufnr)
+	if charter_workspace_root(path) then
+		set_charter_mappings(bufnr)
+		vim.b[bufnr].clearhead_markdown_initialized = true
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -803,7 +838,17 @@ end
 
 M._testing = {
 	["load-config-internal"] = function(opts)
+		config_loaded = true
 		return { config = config.load(opts) }
+	end,
+	["plugin-init"] = function()
+		M._plugin_init()
+	end,
+	["setup-actions-buffer"] = function(bufnr)
+		M._setup_actions_buffer(bufnr)
+	end,
+	["setup-markdown-buffer"] = function(bufnr)
+		M._setup_markdown_buffer(bufnr)
 	end,
 	["collect-workspace-roots"] = function(opts)
 		return collect_workspace_roots(opts)

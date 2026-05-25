@@ -1,6 +1,9 @@
 local config = require("clearhead.config")
 
-local M = {}
+local M = {
+	configured_signature = nil,
+	missing_bin_notified = false,
+}
 
 local function build_workspace_folders()
 	local folders = {}
@@ -21,23 +24,40 @@ local function build_workspace_folders()
 	return folders
 end
 
--- Called once from clearhead.setup() after config is loaded.
--- Registers the server profile and enables auto-attach on the actions filetype.
+local function signature_for(bin, data_dir, folders)
+	local parts = { tostring(config.values.nvim_lsp_enable), bin or "", data_dir or "" }
+	for _, folder in ipairs(folders) do
+		parts[#parts + 1] = folder.name .. "=" .. folder.uri
+	end
+	return table.concat(parts, "\n")
+end
+
+-- Registers or refreshes the server profile using the current config.
+-- Safe to call repeatedly from ftplugin startup and setup() overrides.
 M.setup = function()
 	if not config.values.nvim_lsp_enable then
-		return
+		return false
 	end
 
 	local bin = config.get_bin_path()
 	if not bin then
-		vim.notify(
-			"clearhead binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.",
-			vim.log.levels.WARN
-		)
-		return
+		if not M.missing_bin_notified then
+			vim.notify(
+				"clearhead binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.",
+				vim.log.levels.WARN
+			)
+			M.missing_bin_notified = true
+		end
+		return false
 	end
 
+	M.missing_bin_notified = false
 	local data_dir = config.expand_path(config.values.data_dir)
+	local workspace_folders = build_workspace_folders()
+	local signature = signature_for(bin, data_dir, workspace_folders)
+	if M.configured_signature == signature then
+		return true
+	end
 
 	vim.lsp.config("clearhead-lsp", {
 		cmd = { bin, "start", "lsp" },
@@ -46,10 +66,12 @@ M.setup = function()
 		root_dir = function(_, on_dir)
 			on_dir(data_dir)
 		end,
-		workspace_folders = build_workspace_folders(),
+		workspace_folders = workspace_folders,
 	})
 
 	vim.lsp.enable("clearhead-lsp")
+	M.configured_signature = signature
+	return true
 end
 
 return M

@@ -20,14 +20,26 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 ```lua
 {
   "ClearHeadToDo-Devs/clearhead.nvim",
-  ft = "actions",
-  config = function()
-    require("clearhead").setup({})
-  end,
+  ft = { "actions", "markdown" },
+  cmd = {
+    "ClearheadInbox",
+    "ClearheadWorkspace",
+    "ClearheadProjectRoot",
+    "ClearheadDiff",
+    "ClearheadArchiveWorkspace",
+    "ClearheadPickActions",
+    "ClearheadPickCharters",
+  },
 }
 ```
 
+The plugin works without calling `setup()`. Commands are registered from
+`plugin/`, and buffer-local behavior is applied from `ftplugin/`.
+
 ## Setup
+
+`setup()` is optional and only needed when you want Lua-side overrides in
+addition to the shared ClearHead config file and environment variables.
 
 ```lua
 require("clearhead").setup({
@@ -57,7 +69,7 @@ predictable, the plugin sets buffer-local defaults for `.actions` files:
 - `softtabstop = 4`
 
 You can override that behavior with `nvim_indent_style = "tabs"` or by
-changing `nvim_indent_width` in `setup()`.
+changing `nvim_indent_width` in `setup()` or `config.json`.
 
 ### Workspace discovery
 

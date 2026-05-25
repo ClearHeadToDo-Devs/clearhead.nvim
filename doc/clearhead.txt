@@ -58,13 +58,23 @@ Install with any plugin manager. Example using lazy.nvim: >lua
 
   {
     "ClearHeadToDo-Devs/clearhead.nvim",
-    ft = "actions",
-    config = function()
-      require("clearhead").setup({})
-    end,
+    ft = { "actions", "markdown" },
+    cmd = {
+      "ClearheadInbox",
+      "ClearheadWorkspace",
+      "ClearheadProjectRoot",
+      "ClearheadDiff",
+      "ClearheadArchiveWorkspace",
+      "ClearheadPickActions",
+      "ClearheadPickCharters",
+    },
   }
 <
-Call `setup({})` once with any options to override defaults.
+The plugin works without calling `setup()`. Commands are registered from
+`plugin/`, and buffer-local behavior is applied from `ftplugin/`.
+
+Call `setup({})` only when you want Lua-side overrides in addition to the
+shared ClearHead config file and environment variables.
 See |clearhead-config| for all available keys.
 
 Verify installation: >vim
@@ -75,7 +85,8 @@ Verify installation: >vim
 ==============================================================================
 4. CONFIGURATION                                           *clearhead-config*
 
-Pass options to `setup()`. All keys are optional; defaults shown below. >lua
+Pass options to `setup()` only when you want to override config from Lua.
+All keys are optional; defaults shown below. >lua
 
   require("clearhead").setup({
     -- Core (shared with CLI via ~/.config/clearhead/config.json)
@@ -106,6 +117,9 @@ Configuration is loaded in this order (later values win):
   2. `~/.config/clearhead/config.json`
   3. Environment variables
   4. Keys passed to `setup()`
+
+Without `setup()`, the plugin still uses the first three layers and works
+normally.
 
                                                          *clearhead-config-env*
 Environment variables ~
