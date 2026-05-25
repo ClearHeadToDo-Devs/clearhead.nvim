@@ -123,6 +123,21 @@ describe("clearhead", function()
     assert.are.equal(tmp .. "/.clearhead", workspace)
   end)
 
+  it("should use the workspace name for root next.actions charters", function()
+    local tmp = vim.fn.tempname()
+    local project = tmp .. "/sample-project"
+    vim.fn.mkdir(project .. "/.clearhead/charters", "p")
+
+    local root_actions = project .. "/.clearhead/charters/next.actions"
+    local root_completed = project .. "/.clearhead/charters/next.completed.actions"
+    local sub_readme = project .. "/.clearhead/charters/work/README.md"
+    vim.fn.mkdir(project .. "/.clearhead/charters/work", "p")
+
+    assert.are.equal("sample-project", clearhead._testing["charter-stem"](root_actions))
+    assert.are.equal("sample-project", clearhead._testing["charter-stem"](root_completed))
+    assert.are.equal("work", clearhead._testing["charter-stem"](sub_readme))
+  end)
+
   it("should register commands without requiring setup", function()
     clearhead._testing["plugin-init"]()
     assert.are.equal(2, vim.fn.exists(":ClearheadInbox"))

@@ -3,4 +3,3 @@
     >[ ] add $ invoke CLI expand acts for current charter; reload buffer on success; show act count added in notification $#019db400-0002-7000-0000-000000000001
     >[ ] add $ vim.ui.select picker over templates/ for current charter scope; select template → append generated acts into current buffer $#019db400-0003-7000-0000-000000000001
     >[x] update smart-new-action to not emit RRULE $ post-Decision-21 the smart-new-action snippet should not offer a recurrence field; recurring acts are created via expand acts from a schedule $ %2026-05-25T11:09#019db400-0004-7000-0000-000000000001
-[ ] fix formatting AGAIN $ we keep having this problem where the formatted work isnt actually formatted properly and just shows the same indentation $!1+bug #019e60cc-090d-7e80-a758-934f22b532f9

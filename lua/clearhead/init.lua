@@ -208,26 +208,8 @@ local function collect_workspace_roots(opts)
 	return roots
 end
 
---- Derive a human-readable charter name from a file path inside charters/.
---- next.actions / README.md → parent directory name; everything else → stem.
-local function charter_stem(path)
-	local tail = vim.fn.fnamemodify(path, ":t")
-	-- Directory-form charter files all use 'next' as the filename stem;
-	-- the charter name is the parent directory.
-	if tail == "next.actions"
-		or tail == "next.completed.actions"
-		or tail == "next.upcoming.actions"
-		or tail == "README.md"
-	then
-		return vim.fn.fnamemodify(path, ":h:t")
-	end
-	local stem = vim.fn.fnamemodify(path, ":t:r")
-	stem = stem:gsub("%.completed$", ""):gsub("%.upcoming$", "")
-	return stem
-end
-
-local function charter_workspace_root(path)
-	if not (path and path ~= "" and path:match("%.md$")) then
+local function workspace_root_for_charter_path(path)
+	if not (path and path ~= "") then
 		return nil
 	end
 
@@ -247,6 +229,39 @@ local function charter_workspace_root(path)
 	end
 
 	return nil
+end
+
+--- Derive a human-readable charter name from a file path inside charters/.
+--- next.actions / README.md → parent directory name, except that root-charter
+--- files at charters/next.actions or charters/README.md use the workspace /
+--- project name instead of the literal directory name "charters".
+local function charter_stem(path)
+	local tail = vim.fn.fnamemodify(path, ":t")
+	if
+		tail == "next.actions"
+		or tail == "next.completed.actions"
+		or tail == "next.upcoming.actions"
+		or tail == "README.md"
+	then
+		local parent = vim.fn.fnamemodify(path, ":h:t")
+		if parent == "charters" then
+			local workspace_root = workspace_root_for_charter_path(path)
+			if workspace_root then
+				return workspace_label(workspace_root)
+			end
+		end
+		return parent
+	end
+	local stem = vim.fn.fnamemodify(path, ":t:r")
+	stem = stem:gsub("%.completed$", ""):gsub("%.upcoming$", "")
+	return stem
+end
+
+local function charter_workspace_root(path)
+	if not (path and path ~= "" and path:match("%.md$")) then
+		return nil
+	end
+	return workspace_root_for_charter_path(path)
 end
 
 local function find_charter_files(charters_root, predicate)
@@ -484,20 +499,18 @@ M.archive = function(bufnr)
 	end
 
 	-- .completed.actions files hold already-closed actions waiting to be swept
-	-- into archive.ttl. Passing them to `archive actions --file` would call
-	-- completed_acts_path() on the path, producing a .completed.completed.actions
-	-- file. Route to `archive charter <name>` instead so they go to archive.ttl.
+	-- into archive.ttl. Route them to `archive charter --file` so the CLI can
+	-- infer the correct charter even for root files like charters/next.completed.actions.
 	local tail = vim.fn.fnamemodify(filename, ":t")
 	if tail:match("%.completed%.actions$") then
-		local name = charter_stem(filename)
-		vim.fn.jobstart({ bin, "archive", "charter", name }, {
+		vim.fn.jobstart({ bin, "archive", "charter", "--file", filename }, {
 			on_exit = function(_, exit_code)
 				vim.schedule(function()
 					if exit_code == 0 then
-						vim.notify("Charter '" .. name .. "' archived to archive.ttl.")
+						vim.notify("Current charter archived to archive.ttl.")
 					else
 						vim.notify(
-							"Charter '" .. name .. "' must have 'state: Closed' in its .md file. "
+							"Current charter must have 'state: Closed' in its .md file. "
 								.. "Set it, then use <localleader>A.",
 							vim.log.levels.WARN
 						)
@@ -549,7 +562,9 @@ M.close_charter = function(opts)
 		return
 	end
 	local cmd = { bin, "close", "charter", "--file", buf_path }
-	if opts.dry_run then table.insert(cmd, "--dry-run") end
+	if opts.dry_run then
+		table.insert(cmd, "--dry-run")
+	end
 	run_charter_cmd(cmd, "Charter closed.", "Close charter")
 end
 
@@ -587,8 +602,12 @@ M.archive_charter = function(opts)
 	end
 
 	local cmd = { bin, "archive", "charter", "--file", buf_path }
-	if opts.force then table.insert(cmd, "--force") end
-	if opts.dry_run then table.insert(cmd, "--dry-run") end
+	if opts.force then
+		table.insert(cmd, "--force")
+	end
+	if opts.dry_run then
+		table.insert(cmd, "--dry-run")
+	end
 	run_charter_cmd(cmd, "Charter archived.", "Archive charter")
 end
 
@@ -690,9 +709,8 @@ end
 --- Falls back to open_inbox if no project root is found.
 --- winnr: window handle (0 = current window)
 M.open_project_root = function(winnr)
-	local buf_path = vim.api.nvim_buf_get_name(
-		vim.api.nvim_win_get_buf(winnr == 0 and vim.api.nvim_get_current_win() or winnr)
-	)
+	local buf_path =
+		vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(winnr == 0 and vim.api.nvim_get_current_win() or winnr))
 	local start_dir = buf_path ~= "" and vim.fn.fnamemodify(buf_path, ":h") or vim.fn.getcwd()
 
 	local dir = start_dir
@@ -855,6 +873,9 @@ M._testing = {
 	end,
 	["charter-workspace-root"] = function(path)
 		return charter_workspace_root(path)
+	end,
+	["charter-stem"] = function(path)
+		return charter_stem(path)
 	end,
 }
 

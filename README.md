@@ -83,6 +83,9 @@ The picker commands combine several sources:
 Picker file discovery is recursive under `charters/`, so nested charter
 hierarchies are included instead of only top-level files.
 
+For root-charter files like `charters/next.actions`, the picker shows the
+workspace/project name rather than the literal directory name `charters`.
+
 ### Charter markdown mappings
 
 When you open a charter markdown file (`charters/*.md` or `charters/**/README.md`),

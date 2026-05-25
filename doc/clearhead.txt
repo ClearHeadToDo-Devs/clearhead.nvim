@@ -422,6 +422,9 @@ search distinguishes them cleanly.
 Picker discovery is recursive under `charters/`, so nested charter
 hierarchies are included rather than only top-level files.
 
+For root-charter files like `charters/next.actions`, picker labels use the
+workspace / project name rather than the literal directory name `charters`.
+
 Charter markdown files ~
 
 A `<charter>.md` or `README.md` carries YAML frontmatter: >yaml
@@ -857,7 +860,8 @@ current window.
     Open a `vim.ui.select` picker over all markdown charter documents
     (`*.md`, `**/README.md`) across all visible workspace roots.
     Discovery is recursive under `charters/`. Directory-form charters display
-    as the directory name.
+    as the directory name; root `charters/next.actions` entries display as the
+    workspace / project name.
 
                                            *clearhead.get_conform_opts()*
 `get_conform_opts()`
