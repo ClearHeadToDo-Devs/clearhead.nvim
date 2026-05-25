@@ -124,6 +124,7 @@ end
 
 M.setup = function(opts)
 	config.load(opts)
+	lsp.setup()
 
 	local group = vim.api.nvim_create_augroup("clearhead", { clear = true })
 
@@ -162,7 +163,6 @@ M.setup = function(opts)
 			vim.opt_local.autoread = true
 			vim.opt_local.conceallevel = 2
 			vim.opt_local.concealcursor = "nc"
-			lsp.attach(args.buf)
 
 			if config.values.nvim_default_mappings then
 				local function map(key, fn, desc)
