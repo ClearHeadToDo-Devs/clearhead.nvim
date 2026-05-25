@@ -33,6 +33,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 require("clearhead").setup({
   -- all options are optional; these are the defaults
   default_file          = "inbox.actions",
+  additional_workspaces = {},        -- extra workspace roots to surface in pickers/LSP
   nvim_auto_normalize   = true,      -- assign missing UUIDs on save
   nvim_format_on_save   = true,      -- format via LSP on BufWritePre
   nvim_lsp_enable       = true,      -- auto-attach clearhead-lsp
@@ -57,6 +58,28 @@ predictable, the plugin sets buffer-local defaults for `.actions` files:
 
 You can override that behavior with `nvim_indent_style = "tabs"` or by
 changing `nvim_indent_width` in `setup()`.
+
+### Workspace discovery
+
+The picker commands combine several sources:
+
+- the user workspace (`data_dir`)
+- any ancestor project workspaces discovered by walking up from the current buffer
+- direct child repos inside an enclosing higher-order project workspace
+- any `additional_workspaces` you configure explicitly
+
+Picker file discovery is recursive under `charters/`, so nested charter
+hierarchies are included instead of only top-level files.
+
+### Charter markdown mappings
+
+When you open a charter markdown file (`charters/*.md` or `charters/**/README.md`),
+charter-scoped mappings are available there too, including:
+
+- `<localleader>A` archive current charter
+- `<localleader>C` close current charter
+- `<localleader>s` / `<localleader>S` open the charter pickers
+- `<localleader>p` / `<localleader>P` workspace navigation
 
 ## Documentation
 

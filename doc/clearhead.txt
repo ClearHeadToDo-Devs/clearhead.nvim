@@ -82,6 +82,7 @@ Pass options to `setup()`. All keys are optional; defaults shown below. >lua
     data_dir              = "",    -- workspace root (XDG default)
     config_dir            = "",    -- config directory (XDG default)
     default_file          = "inbox.actions",
+    additional_workspaces = {},      -- extra workspace roots for pickers/LSP
 
     -- Neovim-specific
     nvim_auto_normalize   = true,      -- add missing UUIDs on save
@@ -112,6 +113,7 @@ Environment variables ~
   CLEARHEAD_DATA_DIR
   CLEARHEAD_CONFIG_DIR
   CLEARHEAD_DEFAULT_FILE
+  CLEARHEAD_ADDITIONAL_WORKSPACES
   CLEARHEAD_NVIM_AUTO_NORMALIZE
   CLEARHEAD_NVIM_FORMAT_ON_SAVE
   CLEARHEAD_NVIM_LSP_ENABLE
@@ -389,7 +391,7 @@ Each charter can also have:
 Navigation ~
 
   `<localleader>i`   Open inbox
-  `<localleader>s`   Picker over all active action files (global + project)
+  `<localleader>s`   Picker over all active action files
   `<localleader>S`   Picker over all markdown charter documents
   `<localleader>p`   Open workspace data directory (netrw / oil.nvim / etc.)
   `<localleader>P`   Walk up from current buffer, open nearest `next.actions`
@@ -398,9 +400,13 @@ The pickers (`<localleader>s` / `<localleader>S`) use `vim.ui.select` and
 automatically delegate to telescope, fzf-lua, or snacks.nvim if installed,
 giving you fuzzy search over all charter names with no extra configuration.
 
-When multiple workspaces are visible (global + a project), each label is
+When multiple workspaces are visible (global, ancestor projects, sibling
+repos in a higher-order workspace, or configured extras), each label is
 prefixed `[scope]` — e.g. `[~] health` vs `[platform] health` — so fuzzy
 search distinguishes them cleanly.
+
+Picker discovery is recursive under `charters/`, so nested charter
+hierarchies are included rather than only top-level files.
 
 Charter markdown files ~
 
@@ -415,6 +421,10 @@ A `<charter>.md` or `README.md` carries YAML frontmatter: >yaml
 `state: Closed` is required before the charter can be archived (see
 |clearhead-tut-archive|). Use `<localleader>S` to jump to the markdown file
 and edit it.
+
+When you are inside a charter markdown file, charter-scoped mappings remain
+available there too: `<localleader>A`, `<localleader>C`, `<localleader>s`,
+`<localleader>S`, `<localleader>p`, `<localleader>P`, and `<localleader>i`.
 
 ------------------------------------------------------------------------------
 5.6 PROJECT WORKSPACES                                 *clearhead-tut-projects*
@@ -451,8 +461,10 @@ The plugin walks upward from the current file's directory until it finds
 `.clearhead/`, then opens `charters/next.actions`. If none is found, it
 falls back to the global inbox.
 
-Both the global workspace and the nearest project workspace are visible
-in the `<localleader>s` / `<localleader>S` pickers simultaneously.
+The `<localleader>s` / `<localleader>S` pickers include the global
+workspace, any ancestor project workspaces discovered from the current
+buffer, direct child repos in an enclosing higher-order project workspace,
+and any `additional_workspaces` you configure.
 
 ------------------------------------------------------------------------------
 5.7 ARCHIVING LIFECYCLE                                *clearhead-tut-archive*
@@ -519,7 +531,9 @@ Quick reference ~
 ==============================================================================
 6. KEYBINDINGS                                            *clearhead-mappings*
 
-All mappings are buffer-local and only active in `.actions` files.
+All mappings are buffer-local. Action-editing mappings are only active in
+`.actions` files; charter-scoped navigation/archive mappings also activate in
+charter markdown files under `charters/`.
 Requires `nvim_default_mappings = true` (default).
 
 Disable with: >lua
@@ -550,6 +564,7 @@ File operations ~
                      requires `state: Closed` for that path)
   `<localleader>A`   Archive the whole current charter to `archive.ttl`
                      (requires `state: Closed` in charter frontmatter)
+  `<localleader>C`   Close the current charter
   `<localleader>o`   Insert new `[ ]` below current line at same depth
   `>>`               Increase depth of action on current line (add `>`)
   `<<`               Decrease depth of action on current line (remove `>`)
@@ -559,8 +574,8 @@ Navigation ~
   `<localleader>i`   Open inbox
   `<localleader>p`   Open workspace data directory (netrw / oil.nvim / etc.)
   `<localleader>P`   Walk up to nearest `.clearhead/`, open `next.actions`
-  `<localleader>s`   Picker: active action files (global + project workspaces)
-  `<localleader>S`   Picker: markdown charter documents
+  `<localleader>s`   Picker: active action files across all visible workspaces
+  `<localleader>S`   Picker: markdown charter documents across all visible workspaces
 
 ==============================================================================
 7. COMMANDS                                              *clearhead-commands*
@@ -598,14 +613,16 @@ These commands are always available regardless of the current filetype.
                                                 *:ClearheadPickActions*
 :ClearheadPickActions
     Open a `vim.ui.select` picker over all active `.actions` files across
-    the global workspace and any project `.clearhead/` found by walking up
-    from cwd. Excludes `.completed.actions` and `.upcoming.actions`.
+    the global workspace, ancestor project workspaces, direct child repos in
+    any enclosing higher-order workspace, and configured extras. Discovery is
+    recursive under `charters/`. Excludes `.completed.actions` and
+    `.upcoming.actions`.
     Equivalent to `<localleader>s`.
 
                                                *:ClearheadPickCharters*
 :ClearheadPickCharters
     Open a `vim.ui.select` picker over all markdown charter documents
-    (`*.md`, `*/README.md`) across all workspace roots.
+    (`*.md`, `**/README.md`) across all visible workspace roots.
     Equivalent to `<localleader>S`.
 
 ==============================================================================
@@ -814,16 +831,19 @@ current window.
                                            *clearhead.pick_action_file()*
 `pick_action_file()`
     Open a `vim.ui.select` picker over all active `.actions` files across
-    the global workspace and any project `.clearhead/` found by walking up
-    from cwd. Excludes `.completed.actions` and `.upcoming.actions`.
+    the global workspace, ancestor project workspaces, direct child repos in
+    any enclosing higher-order workspace, and configured extras. Discovery is
+    recursive under `charters/`. Excludes `.completed.actions` and
+    `.upcoming.actions`.
     With multiple scopes each entry is prefixed `[scope]` for fuzzy search.
     Delegates to telescope / fzf-lua / snacks if installed.
 
                                             *clearhead.pick_charter_doc()*
 `pick_charter_doc()`
     Open a `vim.ui.select` picker over all markdown charter documents
-    (`*.md`, `*/README.md`) across all workspace roots.
-    Directory-form charters display as the directory name.
+    (`*.md`, `**/README.md`) across all visible workspace roots.
+    Discovery is recursive under `charters/`. Directory-form charters display
+    as the directory name.
 
                                            *clearhead.get_conform_opts()*
 `get_conform_opts()`

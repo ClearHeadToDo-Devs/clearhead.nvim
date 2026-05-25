@@ -62,39 +62,136 @@ local function open_file_in_win(winnr, path)
 	vim.api.nvim_win_set_buf(winnr, buf)
 end
 
---- Return list of { charters=path, label=scope } for global workspace +
---- nearest project .clearhead/ (walk up from cwd). Deduped.
-local function collect_workspace_roots()
-	local roots = {}
-	local seen = {}
+local function is_directory(path)
+	local stat = path and vim.uv.fs_stat(path) or nil
+	return stat and stat.type == "directory"
+end
 
-	local function add(charters_path, label)
-		if not seen[charters_path] then
-			seen[charters_path] = true
-			roots[#roots + 1] = { charters = charters_path, label = label }
-		end
+--- Accept a workspace root, a project root containing .clearhead/, or a
+--- charters/ directory and normalize it to the workspace root.
+local function normalize_workspace_root(path)
+	path = config.expand_path(path)
+	if not (path and path ~= "") then
+		return nil
+	end
+	if is_directory(path .. "/charters") then
+		return path
+	end
+	if is_directory(path .. "/.clearhead/charters") then
+		return path .. "/.clearhead"
+	end
+	if vim.fn.fnamemodify(path, ":t") == ".clearhead" and is_directory(path .. "/charters") then
+		return path
+	end
+	if vim.fn.fnamemodify(path, ":t") == "charters" and is_directory(path) then
+		return vim.fn.fnamemodify(path, ":h")
+	end
+	return nil
+end
+
+local function workspace_label(workspace_root)
+	if vim.fn.fnamemodify(workspace_root, ":t") == ".clearhead" then
+		return vim.fn.fnamemodify(workspace_root, ":h:t")
+	end
+	return vim.fn.fnamemodify(workspace_root, ":t")
+end
+
+local function add_workspace_root(roots, seen, workspace_root, label)
+	workspace_root = normalize_workspace_root(workspace_root)
+	if not workspace_root then
+		return
 	end
 
-	-- Global workspace
-	local data_dir = config.expand_path(config.values.data_dir)
-	if data_dir and data_dir ~= "" then
-		add(data_dir .. "/charters", "~")
+	local charters_path = workspace_root .. "/charters"
+	if not seen[charters_path] then
+		seen[charters_path] = true
+		roots[#roots + 1] = { charters = charters_path, label = label or workspace_label(workspace_root) }
+	end
+end
+
+local function collect_ancestor_workspaces(start_path, roots, seen, project_roots, project_seen)
+	if not (start_path and start_path ~= "") then
+		return
 	end
 
-	-- Nearest project workspace: walk up from cwd
-	local dir = vim.fn.getcwd()
-	while true do
+	local stat = vim.uv.fs_stat(start_path)
+	local dir = (stat and stat.type == "directory") and start_path or vim.fn.fnamemodify(start_path, ":h")
+	while dir and dir ~= "" do
 		local candidate = dir .. "/.clearhead"
-		local stat = vim.uv.fs_stat(candidate)
-		if stat and stat.type == "directory" then
-			add(candidate .. "/charters", vim.fn.fnamemodify(dir, ":t"))
-			break
+		if is_directory(candidate) then
+			add_workspace_root(roots, seen, candidate)
+			if not project_seen[candidate] then
+				project_seen[candidate] = true
+				project_roots[#project_roots + 1] = candidate
+			end
 		end
 		local parent = vim.fn.fnamemodify(dir, ":h")
 		if parent == dir then
 			break
 		end
 		dir = parent
+	end
+end
+
+local function collect_child_project_workspaces(workspace_root, roots, seen)
+	if vim.fn.fnamemodify(workspace_root, ":t") ~= ".clearhead" then
+		return
+	end
+
+	local project_root = vim.fn.fnamemodify(workspace_root, ":h")
+	for name, kind in vim.fs.dir(project_root) do
+		if kind == "directory" and name ~= ".clearhead" and name:sub(1, 1) ~= "." then
+			local candidate = project_root .. "/" .. name .. "/.clearhead"
+			if is_directory(candidate) then
+				add_workspace_root(roots, seen, candidate, name)
+			end
+		end
+	end
+end
+
+local function current_picker_start(opts)
+	opts = opts or {}
+	if opts.current_file and opts.current_file ~= "" then
+		return opts.current_file
+	end
+	local buf_path = vim.api.nvim_buf_get_name(0)
+	if buf_path ~= "" then
+		return buf_path
+	end
+	return opts.cwd or vim.fn.getcwd()
+end
+
+--- Return list of { charters=path, label=scope } for global workspace,
+--- all ancestor project workspaces from the current buffer/cwd, direct child
+--- repos inside any enclosing higher-order project workspace, and any
+--- configured additional_workspaces. Deduped.
+local function collect_workspace_roots(opts)
+	opts = opts or {}
+	local roots = {}
+	local seen = {}
+	local project_roots = {}
+	local project_seen = {}
+
+	local data_dir = normalize_workspace_root(config.values.data_dir)
+	if data_dir then
+		add_workspace_root(roots, seen, data_dir, "~")
+	end
+
+	local starts = { current_picker_start(opts), opts.cwd or vim.fn.getcwd() }
+	local start_seen = {}
+	for _, start in ipairs(starts) do
+		if start and start ~= "" and not start_seen[start] then
+			start_seen[start] = true
+			collect_ancestor_workspaces(start, roots, seen, project_roots, project_seen)
+		end
+	end
+
+	for _, workspace_root in ipairs(project_roots) do
+		collect_child_project_workspaces(workspace_root, roots, seen)
+	end
+
+	for _, path in ipairs(config.values.additional_workspaces or {}) do
+		add_workspace_root(roots, seen, path)
 	end
 
 	return roots
@@ -116,6 +213,110 @@ local function charter_stem(path)
 	local stem = vim.fn.fnamemodify(path, ":t:r")
 	stem = stem:gsub("%.completed$", ""):gsub("%.upcoming$", "")
 	return stem
+end
+
+local function charter_workspace_root(path)
+	if not (path and path ~= "" and path:match("%.md$")) then
+		return nil
+	end
+
+	local dir = vim.fn.fnamemodify(path, ":h")
+	while dir and dir ~= "" do
+		if vim.fn.fnamemodify(dir, ":t") == "charters" then
+			local workspace_root = normalize_workspace_root(vim.fn.fnamemodify(dir, ":h"))
+			if workspace_root and dir == workspace_root .. "/charters" then
+				return workspace_root
+			end
+		end
+		local parent = vim.fn.fnamemodify(dir, ":h")
+		if parent == dir then
+			break
+		end
+		dir = parent
+	end
+
+	return nil
+end
+
+local function find_charter_files(charters_root, predicate)
+	if not is_directory(charters_root) then
+		return {}
+	end
+
+	local files = vim.fs.find(function(name)
+		if name:sub(1, 1) == "." then
+			return false
+		end
+		return predicate(name)
+	end, {
+		path = charters_root,
+		type = "file",
+		limit = math.huge,
+	})
+	table.sort(files)
+	return files
+end
+
+local function set_charter_mappings(bufnr)
+	local function map(key, fn, desc)
+		vim.keymap.set("n", key, fn, { buffer = bufnr, desc = desc })
+	end
+
+	map("<localleader>A", M.archive_charter, "Archive current charter")
+	map("<localleader>C", M.close_charter, "Close current charter")
+	map("<localleader>i", function()
+		M.open_inbox(0)
+	end, "Open inbox")
+	map("<localleader>p", function()
+		M.open_workspace(0)
+	end, "Browse workspace")
+	map("<localleader>P", function()
+		M.open_project_root(0)
+	end, "Open project root")
+	map("<localleader>s", M.pick_action_file, "Pick active action file")
+	map("<localleader>S", M.pick_charter_doc, "Pick charter document")
+end
+
+local function set_action_mappings(bufnr)
+	local function map(key, fn, desc)
+		vim.keymap.set("n", key, fn, { buffer = bufnr, desc = desc })
+	end
+
+	-- State manipulation — closures supply current buffer/cursor at call time.
+	map("<localleader><space>", function()
+		M.cycle_state(0, vim.fn.line(".") - 1)
+	end, "Cycle action state")
+	map("<localleader>x", function()
+		M.set_state(0, vim.fn.line(".") - 1, "x")
+	end, "Set state to Completed")
+	map("<localleader>X", function()
+		M.set_state_tree(0, vim.fn.line(".") - 1, "x")
+	end, "Close action and all children")
+	map("<localleader>-", function()
+		M.set_state(0, vim.fn.line(".") - 1, "-")
+	end, "Set state to In Progress")
+	map("<localleader>=", function()
+		M.set_state(0, vim.fn.line(".") - 1, "=")
+	end, "Set state to Blocked")
+	map("<localleader>_", function()
+		M.set_state(0, vim.fn.line(".") - 1, "_")
+	end, "Set state to Cancelled")
+	map("<localleader><bs>", function()
+		M.set_state(0, vim.fn.line(".") - 1, " ")
+	end, "Set state to Not Started")
+	-- File operations
+	map("<localleader>f", M.format, "Format action file")
+	map("<localleader>a", M.archive, "Archive completed actions")
+	map("<localleader>o", function()
+		M.smart_new_action(0, vim.fn.line(".") - 1)
+	end, "New action below")
+	map(">>", function()
+		M.indent_action(0, vim.fn.line(".") - 1)
+	end, "Increase action depth")
+	map("<<", function()
+		M.dedent_action(0, vim.fn.line(".") - 1)
+	end, "Decrease action depth")
+	set_charter_mappings(bufnr)
 end
 
 -- ---------------------------------------------------------------------------
@@ -172,57 +373,21 @@ M.setup = function(opts)
 			vim.opt_local.expandtab = (indent_style == "spaces")
 
 			if config.values.nvim_default_mappings then
-				local function map(key, fn, desc)
-					vim.keymap.set("n", key, fn, { buffer = true, desc = desc })
-				end
-				-- State manipulation — closures supply current buffer/cursor at call time.
-				map("<localleader><space>", function()
-					M.cycle_state(0, vim.fn.line(".") - 1)
-				end, "Cycle action state")
-				map("<localleader>x", function()
-					M.set_state(0, vim.fn.line(".") - 1, "x")
-				end, "Set state to Completed")
-				map("<localleader>X", function()
-					M.set_state_tree(0, vim.fn.line(".") - 1, "x")
-				end, "Close action and all children")
-				map("<localleader>-", function()
-					M.set_state(0, vim.fn.line(".") - 1, "-")
-				end, "Set state to In Progress")
-				map("<localleader>=", function()
-					M.set_state(0, vim.fn.line(".") - 1, "=")
-				end, "Set state to Blocked")
-				map("<localleader>_", function()
-					M.set_state(0, vim.fn.line(".") - 1, "_")
-				end, "Set state to Cancelled")
-				map("<localleader><bs>", function()
-					M.set_state(0, vim.fn.line(".") - 1, " ")
-				end, "Set state to Not Started")
-				-- File operations
-				map("<localleader>f", M.format, "Format action file")
-				map("<localleader>a", M.archive, "Archive completed actions")
-				map("<localleader>A", M.archive_charter, "Archive current charter")
-				map("<localleader>C", M.close_charter, "Close current charter")
-				map("<localleader>o", function()
-					M.smart_new_action(0, vim.fn.line(".") - 1)
-				end, "New action below")
-				map(">>", function()
-					M.indent_action(0, vim.fn.line(".") - 1)
-				end, "Increase action depth")
-				map("<<", function()
-					M.dedent_action(0, vim.fn.line(".") - 1)
-				end, "Decrease action depth")
-				-- Navigation
-				map("<localleader>i", function()
-					M.open_inbox(0)
-				end, "Open inbox")
-				map("<localleader>p", function()
-					M.open_workspace(0)
-				end, "Browse workspace")
-				map("<localleader>P", function()
-					M.open_project_root(0)
-				end, "Open project root")
-				map("<localleader>s", M.pick_action_file, "Pick active action file")
-				map("<localleader>S", M.pick_charter_doc, "Pick charter document")
+				set_action_mappings(args.buf)
+			end
+		end,
+	})
+
+	vim.api.nvim_create_autocmd("FileType", {
+		pattern = "markdown",
+		group = group,
+		callback = function(args)
+			if not config.values.nvim_default_mappings then
+				return
+			end
+			local path = vim.api.nvim_buf_get_name(args.buf)
+			if charter_workspace_root(path) then
+				set_charter_mappings(args.buf)
 			end
 		end,
 	})
@@ -523,20 +688,19 @@ M.pick_action_file = function()
 	local multi_scope = #roots > 1
 
 	for _, root in ipairs(roots) do
-		local files = vim.fn.glob(root.charters .. "/*.actions", false, true)
-		local subfiles = vim.fn.glob(root.charters .. "/*/*.actions", false, true)
-		vim.list_extend(files, subfiles)
+		local files = find_charter_files(root.charters, function(name)
+			return name:match("%.actions$")
+				and not name:match("%.completed%.actions$")
+				and not name:match("%.upcoming%.actions$")
+		end)
 
 		for _, path in ipairs(files) do
-			local tail = vim.fn.fnamemodify(path, ":t")
-			if not tail:match("%.completed%.actions$") and not tail:match("%.upcoming%.actions$") then
-				items[#items + 1] = {
-					path = path,
-					name = charter_stem(path),
-					scope = root.label,
-					multi_scope = multi_scope,
-				}
-			end
+			items[#items + 1] = {
+				path = path,
+				name = charter_stem(path),
+				scope = root.label,
+				multi_scope = multi_scope,
+			}
 		end
 	end
 
@@ -575,9 +739,9 @@ M.pick_charter_doc = function()
 	local multi_scope = #roots > 1
 
 	for _, root in ipairs(roots) do
-		local files = vim.fn.glob(root.charters .. "/*.md", false, true)
-		local subfiles = vim.fn.glob(root.charters .. "/*/*.md", false, true)
-		vim.list_extend(files, subfiles)
+		local files = find_charter_files(root.charters, function(name)
+			return name:match("%.md$")
+		end)
 
 		for _, path in ipairs(files) do
 			items[#items + 1] = {
@@ -640,6 +804,12 @@ end
 M._testing = {
 	["load-config-internal"] = function(opts)
 		return { config = config.load(opts) }
+	end,
+	["collect-workspace-roots"] = function(opts)
+		return collect_workspace_roots(opts)
+	end,
+	["charter-workspace-root"] = function(path)
+		return charter_workspace_root(path)
 	end,
 }
 
