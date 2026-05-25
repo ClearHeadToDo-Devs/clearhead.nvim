@@ -1,0 +1,5 @@
+[x] shore up workflow where we want to go to project root BEFORE the plugin is loaded %2026-05-25T11:09#019db931-fd9b-7681-a673-24f3af9ff654
+[x] look up how to automatically get the picker to show up? $ right now it shows up as the file explorer i have set $%2026-05-25T11:10#019db932-7253-75b2-a508-f700ca45d6d0
+[x] add hotkey to increase or decrease increment depth $ done: >> and << bound in FileType callback $%2026-05-25T11:10#019dc36f-26fe-7061-92e6-7c96e13ad949
+[x] make new action hotkey keep the same depth as the current action $ already implemented in smart_new_action via treesitter depth detection $%2026-05-25T11:10#019dc36f-6bff-7631-a911-4b4dc9ce352b
+[x] add update-charter-state UX $ users need to set state: Closed before archiving a charter; consider a picker or cycle-state keymap for charter .md files similar to action state cycling $%2026-05-25T11:10#67641e66-619f-462e-bbe7-6ec9d5c86b79

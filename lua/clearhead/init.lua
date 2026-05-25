@@ -423,18 +423,12 @@ M.format = function(bufnr)
 	local attached = vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr })
 
 	if #attached > 0 then
-		vim.lsp.buf.format({ name = "clearhead-lsp", bufnr = bufnr })
+		vim.lsp.buf.format({ name = "clearhead-lsp", bufnr = bufnr, async = false, timeout_ms = 5000 })
 		return
 	end
 
-	if #vim.lsp.get_clients({ name = "clearhead-lsp" }) > 0 then
-		lsp.attach(bufnr)
-		vim.schedule(function()
-			vim.lsp.buf.format({ name = "clearhead-lsp", bufnr = bufnr })
-		end)
-		return
-	end
-
+	-- LSP not attached to this buffer — can't do synchronous pre-write formatting.
+	-- Fall through to normalize so the file is corrected on the post-write pass.
 	if config.values.nvim_auto_normalize then
 		M.normalize(bufnr)
 	end
