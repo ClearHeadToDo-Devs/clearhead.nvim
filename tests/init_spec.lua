@@ -8,6 +8,17 @@ describe("clearhead", function()
   it("should load default configuration", function()
     local ctx = clearhead._testing["load-config-internal"]()
     assert.are.equal("inbox.actions", ctx.config.default_file)
+    assert.are.equal("spaces", ctx.config.nvim_indent_style)
+    assert.are.equal(4, ctx.config.nvim_indent_width)
+  end)
+
+  it("should allow indentation defaults to be overridden", function()
+    local ctx = clearhead._testing["load-config-internal"]({
+      nvim_indent_style = "tabs",
+      nvim_indent_width = 2,
+    })
+    assert.are.equal("tabs", ctx.config.nvim_indent_style)
+    assert.are.equal(2, ctx.config.nvim_indent_width)
   end)
 
   it("should provide status string for a buffer", function()

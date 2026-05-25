@@ -84,12 +84,14 @@ Pass options to `setup()`. All keys are optional; defaults shown below. >lua
     default_file          = "inbox.actions",
 
     -- Neovim-specific
-    nvim_auto_normalize   = true,  -- add missing UUIDs on save
-    nvim_format_on_save   = true,  -- format on BufWritePre via LSP
-    nvim_lsp_enable       = true,  -- auto-start clearhead-lsp
-    nvim_lsp_binary_path  = "",    -- explicit binary path (auto-detected)
-    nvim_inbox_file       = "",    -- override inbox path
-    nvim_default_mappings = true,  -- enable <localleader> keybindings
+    nvim_auto_normalize   = true,      -- add missing UUIDs on save
+    nvim_format_on_save   = true,      -- format on BufWritePre via LSP
+    nvim_lsp_enable       = true,      -- auto-start clearhead-lsp
+    nvim_lsp_binary_path  = "",        -- explicit binary path (auto-detected)
+    nvim_inbox_file       = "",        -- override inbox path
+    nvim_default_mappings = true,      -- enable <localleader> keybindings
+    nvim_indent_style     = "spaces", -- buffer-local indent style
+    nvim_indent_width     = 4,         -- buffer-local indent width
   })
 <
                                                         *clearhead-config-xdg*
@@ -116,6 +118,8 @@ Environment variables ~
   CLEARHEAD_NVIM_INBOX_FILE
   CLEARHEAD_NVIM_LSP_BINARY_PATH
   CLEARHEAD_NVIM_DEFAULT_MAPPINGS
+  CLEARHEAD_NVIM_INDENT_STYLE
+  CLEARHEAD_NVIM_INDENT_WIDTH
 
                                                     *clearhead-config-bin-path*
 Binary path resolution ~
@@ -263,6 +267,11 @@ be unique within the workspace: >
 Children are indented with `>` markers. One `>` = depth 1, `>>` = depth 2,
 and so on. Whitespace before the marker is cosmetic and does not affect
 parsing — use it for visual alignment.
+
+By default `clearhead.nvim` sets buffer-local indentation for `.actions`
+files to 4 spaces (`expandtab`, `shiftwidth=4`, `tabstop=4`,
+`softtabstop=4`). The LSP formatter uses those live buffer settings, so
+formatted child actions follow the current editor indentation style.
 
 A parent action and its children: >
 
@@ -783,9 +792,13 @@ current window.
 
                                                    *clearhead.format()*
 `format([bufnr])`
-    Format `bufnr` via the attached LSP. If no client is attached yet
-    but the server is running, attaches first then formats. Falls back
-    to |clearhead.normalize()| when `nvim_auto_normalize = true`.
+    Format `bufnr` via the attached LSP. The formatter respects the
+    current buffer indentation settings (`expandtab`, `shiftwidth`,
+    `tabstop`, `softtabstop`); `clearhead.nvim` defaults `.actions`
+    buffers to 4-space indentation unless overridden in `setup()`.
+    If no client is attached yet but the server is running, attaches
+    first then formats. Falls back to |clearhead.normalize()| when
+    `nvim_auto_normalize = true`.
 
                                                 *clearhead.normalize()*
 `normalize([bufnr])`

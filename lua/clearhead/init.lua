@@ -164,6 +164,13 @@ M.setup = function(opts)
 			vim.opt_local.conceallevel = 2
 			vim.opt_local.concealcursor = "nc"
 
+			local indent_width = tonumber(config.values.nvim_indent_width) or 4
+			local indent_style = config.values.nvim_indent_style == "tabs" and "tabs" or "spaces"
+			vim.opt_local.shiftwidth = indent_width
+			vim.opt_local.tabstop = indent_width
+			vim.opt_local.softtabstop = indent_width
+			vim.opt_local.expandtab = (indent_style == "spaces")
+
 			if config.values.nvim_default_mappings then
 				local function map(key, fn, desc)
 					vim.keymap.set("n", key, fn, { buffer = true, desc = desc })

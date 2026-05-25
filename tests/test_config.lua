@@ -29,9 +29,17 @@ end
 -- Test default config loading
 local ctx = testing["load-config-internal"]()
 assert_eq(ctx.config.default_file, "inbox.actions", "Default file should be inbox.actions")
+assert_eq(ctx.config.nvim_indent_style, "spaces", "Default indent style should be spaces")
+assert_eq(ctx.config.nvim_indent_width, 4, "Default indent width should be 4")
 
 -- Test user options override
-local ctx2 = testing["load-config-internal"]({default_file = "test.actions"})
+local ctx2 = testing["load-config-internal"]({
+    default_file = "test.actions",
+    nvim_indent_style = "tabs",
+    nvim_indent_width = 2,
+})
 assert_eq(ctx2.config.default_file, "test.actions", "User option should override default_file")
+assert_eq(ctx2.config.nvim_indent_style, "tabs", "User option should override indent style")
+assert_eq(ctx2.config.nvim_indent_width, 2, "User option should override indent width")
 
 print("All config tests passed!")

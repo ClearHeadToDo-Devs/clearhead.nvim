@@ -10,6 +10,8 @@ local DEFAULTS = {
 	nvim_inbox_file = "",
 	nvim_lsp_binary_path = "",
 	nvim_default_mappings = true,
+	nvim_indent_style = "spaces",
+	nvim_indent_width = 4,
 }
 
 M.values = vim.deepcopy(DEFAULTS)
@@ -49,6 +51,8 @@ local function load_env()
 		CLEARHEAD_NVIM_INBOX_FILE = "nvim_inbox_file",
 		CLEARHEAD_NVIM_LSP_BINARY_PATH = "nvim_lsp_binary_path",
 		CLEARHEAD_NVIM_DEFAULT_MAPPINGS = "nvim_default_mappings",
+		CLEARHEAD_NVIM_INDENT_STYLE = "nvim_indent_style",
+		CLEARHEAD_NVIM_INDENT_WIDTH = "nvim_indent_width",
 	}
 	local out = {}
 	for env_var, key in pairs(env_map) do
