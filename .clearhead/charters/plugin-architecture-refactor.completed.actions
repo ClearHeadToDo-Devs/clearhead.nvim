@@ -1,5 +1,0 @@
-[x] audit current setup responsibilities and separate startup from buffer-local behavior !1 %2026-05-25T14:05#019e60ee-19f2-7272-9d96-a67eecb72db3
-[x] move command registration and global autocmd bootstrap into plugin/ entrypoints !1 %2026-05-25T14:05#019e60ee-1a06-7d30-93dc-3572871318bd
-[x] move .actions buffer defaults and mappings into ftplugin-based loading !1 %2026-05-25T14:05#019e60ee-1a10-7d61-93ee-351e0d3a018a
-[x] preserve setup() as an optional override layer for user-specific nvim settings !2 %2026-05-25T14:05#019e60ee-1a18-7141-9b5e-794f7d8ae3bc
-[x] update docs and tests to describe zero-setup behavior and compatibility expectations !2 %2026-05-25T14:05#019e60ee-1a22-7e50-9857-f5923e8b0c7d

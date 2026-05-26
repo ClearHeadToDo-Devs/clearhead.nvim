@@ -47,8 +47,11 @@ end
 
 --- Run a clearhead CLI command and notify on completion.
 --- error_label is the human verb phrase used in failure messages, e.g. "Close charter".
-local function run_charter_cmd(cmd, success_msg, error_label)
+--- cwd is optional; when provided the CLI subprocess is launched from that directory
+--- so find_project_data_dir() walks up from the correct project root.
+local function run_charter_cmd(cmd, success_msg, error_label, cwd)
 	vim.fn.jobstart(cmd, {
+		cwd = cwd,
 		on_exit = function(_, exit_code)
 			vim.schedule(function()
 				if exit_code == 0 then
@@ -229,6 +232,13 @@ local function workspace_root_for_charter_path(path)
 	end
 
 	return nil
+end
+
+--- Derive the project root (parent of .clearhead/) from a file inside a workspace.
+--- Returns nil if the path isn't inside a recognized workspace charter tree.
+local function project_root_for_path(path)
+	local ws_root = workspace_root_for_charter_path(path)
+	return ws_root and vim.fn.fnamemodify(ws_root, ":h") or nil
 end
 
 --- Derive a human-readable charter name from a file path inside charters/.
@@ -504,6 +514,7 @@ M.archive = function(bufnr)
 	local tail = vim.fn.fnamemodify(filename, ":t")
 	if tail:match("%.completed%.actions$") then
 		vim.fn.jobstart({ bin, "archive", "charter", "--file", filename }, {
+			cwd = project_root_for_path(filename),
 			on_exit = function(_, exit_code)
 				vim.schedule(function()
 					if exit_code == 0 then
@@ -565,7 +576,7 @@ M.close_charter = function(opts)
 	if opts.dry_run then
 		table.insert(cmd, "--dry-run")
 	end
-	run_charter_cmd(cmd, "Charter closed.", "Close charter")
+	run_charter_cmd(cmd, "Charter closed.", "Close charter", project_root_for_path(buf_path))
 end
 
 M.archive_charter = function(opts)
@@ -608,7 +619,7 @@ M.archive_charter = function(opts)
 	if opts.dry_run then
 		table.insert(cmd, "--dry-run")
 	end
-	run_charter_cmd(cmd, "Charter archived.", "Archive charter")
+	run_charter_cmd(cmd, "Charter archived.", "Archive charter", project_root_for_path(buf_path))
 end
 
 --- Archive all charters whose frontmatter carries `state: Closed`.

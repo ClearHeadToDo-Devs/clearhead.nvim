@@ -1,0 +1,38 @@
+<urn:uuid:019e60ee-1a22-7e50-9857-f5923e8b0c7d> <https://clearhead.us/vocab/actions/v4#hasCompletedDateTime> "2026-05-25T14:05:00-07:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+	<https://www.commoncoreontologies.org/ont00001868> <https://clearhead.us/vocab/actions/v4#Completed> ;
+	<https://clearhead.us/vocab/actions/v4#hasPriority> 2 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "update docs and tests to describe zero-setup behavior and compatibility expectations" ;
+	<https://clearhead.us/vocab/actions/v4#hasUUID> "019e60ee-1a22-7e50-9857-f5923e8b0c7d" ;
+	a <https://clearhead.us/vocab/actions/v4#Action> .
+<urn:uuid:019e60ee-1a18-7141-9b5e-794f7d8ae3bc> <https://clearhead.us/vocab/actions/v4#hasCompletedDateTime> "2026-05-25T14:05:00-07:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+	<https://www.commoncoreontologies.org/ont00001868> <https://clearhead.us/vocab/actions/v4#Completed> ;
+	<https://clearhead.us/vocab/actions/v4#hasPriority> 2 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "preserve setup() as an optional override layer for user-specific nvim settings" ;
+	<https://clearhead.us/vocab/actions/v4#hasUUID> "019e60ee-1a18-7141-9b5e-794f7d8ae3bc" ;
+	a <https://clearhead.us/vocab/actions/v4#Action> .
+<urn:uuid:019e60ee-1a10-7d61-93ee-351e0d3a018a> <https://clearhead.us/vocab/actions/v4#hasCompletedDateTime> "2026-05-25T14:05:00-07:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+	<https://www.commoncoreontologies.org/ont00001868> <https://clearhead.us/vocab/actions/v4#Completed> ;
+	<https://clearhead.us/vocab/actions/v4#hasPriority> 1 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "move .actions buffer defaults and mappings into ftplugin-based loading" ;
+	<https://clearhead.us/vocab/actions/v4#hasUUID> "019e60ee-1a10-7d61-93ee-351e0d3a018a" ;
+	a <https://clearhead.us/vocab/actions/v4#Action> .
+<urn:uuid:019e60ee-1a06-7d30-93dc-3572871318bd> <https://clearhead.us/vocab/actions/v4#hasCompletedDateTime> "2026-05-25T14:05:00-07:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+	<https://www.commoncoreontologies.org/ont00001868> <https://clearhead.us/vocab/actions/v4#Completed> ;
+	<https://clearhead.us/vocab/actions/v4#hasPriority> 1 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "move command registration and global autocmd bootstrap into plugin/ entrypoints" ;
+	<https://clearhead.us/vocab/actions/v4#hasUUID> "019e60ee-1a06-7d30-93dc-3572871318bd" ;
+	a <https://clearhead.us/vocab/actions/v4#Action> .
+<urn:uuid:019e60ee-19f2-7272-9d96-a67eecb72db3> <https://clearhead.us/vocab/actions/v4#hasCompletedDateTime> "2026-05-25T14:05:00-07:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ;
+	<https://www.commoncoreontologies.org/ont00001868> <https://clearhead.us/vocab/actions/v4#Completed> ;
+	<https://clearhead.us/vocab/actions/v4#hasPriority> 1 ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "audit current setup responsibilities and separate startup from buffer-local behavior" ;
+	<https://clearhead.us/vocab/actions/v4#hasUUID> "019e60ee-19f2-7272-9d96-a67eecb72db3" ;
+	a <https://clearhead.us/vocab/actions/v4#Action> .
+<urn:uuid:019e60ed-f0ad-7280-9ee8-8f7c6123779a> <http://purl.obolibrary.org/obo/BFO_0000051> <urn:uuid:019e60ee-1a22-7e50-9857-f5923e8b0c7d> , <urn:uuid:019e60ee-1a18-7141-9b5e-794f7d8ae3bc> , <urn:uuid:019e60ee-1a10-7d61-93ee-351e0d3a018a> , <urn:uuid:019e60ee-1a06-7d30-93dc-3572871318bd> , <urn:uuid:019e60ee-19f2-7272-9d96-a67eecb72db3> .
+<urn:uuid:7e299474-5185-5455-8be3-a2093b14f0e4> <https://clearhead.us/vocab/actions/v4#hasSubCharter> <urn:uuid:019e60ed-f0ad-7280-9ee8-8f7c6123779a> .
+<urn:uuid:019e60ed-f0ad-7280-9ee8-8f7c6123779a> <https://clearhead.us/vocab/actions/v4#hasCharterState> "Closed" ;
+	<https://clearhead.us/vocab/actions/v4#hasAlias> "plugin-architecture-refactor" ;
+	<http://www.w3.org/2000/01/rdf-schema#comment> "we want to embrace the new setup philosophy and refactor the plugin so that setup has sane defaults without needing to overwrite anything" ;
+	<https://clearhead.us/vocab/actions/v4#hasUUID> "019e60ed-f0ad-7280-9ee8-8f7c6123779a" ;
+	<http://www.w3.org/2000/01/rdf-schema#label> "Plugin architecture refactor" ;
+	a <https://clearhead.us/vocab/actions/v4#Charter> .
