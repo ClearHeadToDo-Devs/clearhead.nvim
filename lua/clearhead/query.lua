@@ -64,11 +64,11 @@ M.query_to_qflist = function(opts)
 
 				local items = {}
 				for _, row in ipairs(rows) do
-					local ws_root = row.ws_root
+					local charter_root = row.charter_root
 					local source_file = row.source_file
-					if ws_root and source_file then
+					if charter_root and source_file then
 						items[#items + 1] = {
-							filename = ws_root .. "/charters/" .. source_file,
+							filename = charter_root .. "/" .. source_file,
 							lnum = tonumber(row.source_line) or 1,
 							col = 1,
 							text = (row.name or "?") .. " [" .. (row.status or "?") .. "]",
