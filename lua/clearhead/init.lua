@@ -1,6 +1,7 @@
 local config = require("clearhead.config")
 local lsp = require("clearhead.lsp")
 local actions = require("clearhead.actions")
+local query = require("clearhead.query")
 
 local M = {}
 local bootstrap_done = false
@@ -23,6 +24,7 @@ M.smart_new_action = actions.smart_new_action
 M.get_status = actions.get_status
 M.indent_action = actions.indent_action
 M.dedent_action = actions.dedent_action
+M.query_to_qflist = query.query_to_qflist
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -427,6 +429,9 @@ M._plugin_init = function()
 	end)
 	create_command("ClearheadPickCharters", function()
 		M.pick_charter_doc()
+	end)
+	create_command("ClearheadQflist", function()
+		M.query_to_qflist()
 	end)
 
 	bootstrap_done = true
