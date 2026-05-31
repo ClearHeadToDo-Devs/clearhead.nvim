@@ -2,9 +2,26 @@ local M = {}
 
 local config = require("clearhead.config")
 
+--- Walk up from path to find the nearest ancestor containing .clearhead/.
+local function find_project_root(start)
+	local stat = vim.uv.fs_stat(start)
+	local dir = (stat and stat.type == "directory") and start or vim.fn.fnamemodify(start, ":h")
+	while dir and dir ~= "" do
+		if vim.uv.fs_stat(dir .. "/.clearhead") then
+			return dir
+		end
+		local parent = vim.fn.fnamemodify(dir, ":h")
+		if parent == dir then
+			break
+		end
+		dir = parent
+	end
+	return nil
+end
+
 --- Populate the quickfix list with open actions that have source locations.
 ---
---- Calls `clearhead query named-run qflist` which returns JSON rows. Each row
+--- Calls `clearhead query named qflist` which returns JSON rows. Each row
 --- carries ws_root (absolute) + source_file (relative to charter root) so
 --- paths resolve correctly across multiple workspaces.
 ---
@@ -18,8 +35,13 @@ M.query_to_qflist = function(opts)
 		return
 	end
 
+	local buf_path = vim.api.nvim_buf_get_name(0)
+	local start = buf_path ~= "" and buf_path or vim.fn.getcwd()
+	local cwd = find_project_root(start) or config.expand_path(config.values.data_dir)
+
 	local chunks = {}
-	vim.fn.jobstart({ bin, "query", "named-run", "qflist" }, {
+	vim.fn.jobstart({ bin, "query", "named", "qflist" }, {
+		cwd = cwd,
 		stdout_buffered = true,
 		on_stdout = function(_, data)
 			if data then
