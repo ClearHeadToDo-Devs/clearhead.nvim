@@ -24,8 +24,7 @@ M.smart_new_action = actions.smart_new_action
 M.get_status = actions.get_status
 M.indent_action = actions.indent_action
 M.dedent_action = actions.dedent_action
-M.query_to_qflist = query.query_to_qflist
-M.query_to_agenda = query.query_to_agenda
+M.run_query = query.run_query
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -431,12 +430,31 @@ M._plugin_init = function()
 	create_command("ClearheadPickCharters", function()
 		M.pick_charter_doc()
 	end)
-	create_command("ClearheadQflist", function()
-		M.query_to_qflist()
-	end)
-	create_command("ClearheadAgenda", function()
-		M.query_to_agenda()
-	end)
+	if vim.fn.exists(":ClearheadQflist") == 0 then
+		vim.api.nvim_create_user_command("ClearheadQflist", function(args)
+			local name = args.args ~= "" and args.args or nil
+			M.run_query(name, function(rows)
+				local items = {}
+				for _, row in ipairs(rows) do
+					if row.charter_root and row.source_file then
+						items[#items + 1] = {
+							filename = row.charter_root .. "/" .. row.source_file,
+							lnum = tonumber(row.source_line) or 1,
+							col = 1,
+							text = (row.name or "?") .. " [" .. (row.status or "?") .. "]",
+						}
+					end
+				end
+				if #items == 0 then
+					vim.notify("clearhead: no actions found.", vim.log.levels.WARN)
+					return
+				end
+				local title = name and ("clearhead: " .. name) or "clearhead actions"
+				vim.fn.setqflist({}, " ", { title = title, items = items })
+				vim.cmd("copen")
+			end)
+		end, { nargs = "?" })
+	end
 
 	bootstrap_done = true
 end

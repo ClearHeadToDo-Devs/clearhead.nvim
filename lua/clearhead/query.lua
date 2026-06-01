@@ -19,17 +19,18 @@ local function find_project_root(start)
 	return nil
 end
 
---- Populate the quickfix list with open actions that have source locations.
+--- Run a named qflist query and pass the parsed rows to callback(rows).
 ---
---- Calls `clearhead query qflist [name]` which returns JSON rows. Each row
---- carries ws_root (absolute) + source_file (relative to charter root) so
---- paths resolve correctly across multiple workspaces.
+--- Calls `clearhead query qflist [name]` and returns the JSON rows as-is.
+--- Each row contains: name, status, source_file, source_line, charter_root,
+--- plus any extra columns the query returns (e.g. scheduled_at, due_date).
 ---
---- opts:
----   title (string?) — quickfix list title (default: "clearhead actions")
----   name  (string?) — named qflist variant (e.g. "agenda"); omit for default
-M.query_to_qflist = function(opts)
-	opts = opts or {}
+--- The caller decides what to do with the rows — qflist, vim.ui.select,
+--- a telescope picker, or anything else.
+---
+--- name (string?) — named variant (e.g. "agenda"); omit for default
+--- callback (function) — receives list of row tables, called on success
+M.run_query = function(name, callback)
 	local bin = config.get_bin_path()
 	if not bin then
 		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
@@ -41,8 +42,8 @@ M.query_to_qflist = function(opts)
 	local cwd = find_project_root(start) or config.expand_path(config.values.data_dir)
 
 	local cmd = { bin, "query", "qflist" }
-	if opts.name then
-		cmd[#cmd + 1] = opts.name
+	if name then
+		cmd[#cmd + 1] = name
 	end
 
 	local chunks = {}
@@ -57,53 +58,19 @@ M.query_to_qflist = function(opts)
 		on_exit = function(_, exit_code)
 			vim.schedule(function()
 				if exit_code ~= 0 then
-					vim.notify("clearhead qflist query failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
+					vim.notify("clearhead query failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
 					return
 				end
-
 				local raw = table.concat(chunks, "\n")
 				local ok, rows = pcall(vim.json.decode, raw)
 				if not ok or type(rows) ~= "table" then
-					vim.notify("clearhead: failed to parse qflist output.", vim.log.levels.ERROR)
+					vim.notify("clearhead: failed to parse query output.", vim.log.levels.ERROR)
 					return
 				end
-
-				local items = {}
-				for _, row in ipairs(rows) do
-					local charter_root = row.charter_root
-					local source_file = row.source_file
-					if charter_root and source_file then
-						items[#items + 1] = {
-							filename = charter_root .. "/" .. source_file,
-							lnum = tonumber(row.source_line) or 1,
-							col = 1,
-							text = (row.name or "?") .. " [" .. (row.status or "?") .. "]",
-						}
-					end
-				end
-
-				if #items == 0 then
-					vim.notify("clearhead: no actions with source locations found.", vim.log.levels.WARN)
-					return
-				end
-
-				vim.fn.setqflist({}, " ", {
-					title = opts.title or "clearhead actions",
-					items = items,
-				})
-				vim.cmd("copen")
+				callback(rows)
 			end)
 		end,
 	})
-end
-
---- Populate the quickfix list with today's hard-landscape actions (scheduled
---- or due on or before end of today). Wraps query_to_qflist with name="agenda".
-M.query_to_agenda = function(opts)
-	opts = opts or {}
-	opts.name = "agenda"
-	opts.title = opts.title or "clearhead agenda"
-	M.query_to_qflist(opts)
 end
 
 return M
