@@ -40,7 +40,7 @@ M.query_to_qflist = function(opts)
 	local cwd = find_project_root(start) or config.expand_path(config.values.data_dir)
 
 	local chunks = {}
-	vim.fn.jobstart({ bin, "query", "named", "qflist" }, {
+	vim.fn.jobstart({ bin, "query", "qflist" }, {
 		cwd = cwd,
 		stdout_buffered = true,
 		on_stdout = function(_, data)
