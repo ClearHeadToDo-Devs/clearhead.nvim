@@ -25,6 +25,7 @@ M.get_status = actions.get_status
 M.indent_action = actions.indent_action
 M.dedent_action = actions.dedent_action
 M.query_to_qflist = query.query_to_qflist
+M.query_to_agenda = query.query_to_agenda
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -432,6 +433,9 @@ M._plugin_init = function()
 	end)
 	create_command("ClearheadQflist", function()
 		M.query_to_qflist()
+	end)
+	create_command("ClearheadAgenda", function()
+		M.query_to_agenda()
 	end)
 
 	bootstrap_done = true

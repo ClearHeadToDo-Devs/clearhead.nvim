@@ -21,12 +21,13 @@ end
 
 --- Populate the quickfix list with open actions that have source locations.
 ---
---- Calls `clearhead query named qflist` which returns JSON rows. Each row
+--- Calls `clearhead query qflist [name]` which returns JSON rows. Each row
 --- carries ws_root (absolute) + source_file (relative to charter root) so
 --- paths resolve correctly across multiple workspaces.
 ---
 --- opts:
 ---   title (string?) — quickfix list title (default: "clearhead actions")
+---   name  (string?) — named qflist variant (e.g. "agenda"); omit for default
 M.query_to_qflist = function(opts)
 	opts = opts or {}
 	local bin = config.get_bin_path()
@@ -39,8 +40,13 @@ M.query_to_qflist = function(opts)
 	local start = buf_path ~= "" and buf_path or vim.fn.getcwd()
 	local cwd = find_project_root(start) or config.expand_path(config.values.data_dir)
 
+	local cmd = { bin, "query", "qflist" }
+	if opts.name then
+		cmd[#cmd + 1] = opts.name
+	end
+
 	local chunks = {}
-	vim.fn.jobstart({ bin, "query", "qflist" }, {
+	vim.fn.jobstart(cmd, {
 		cwd = cwd,
 		stdout_buffered = true,
 		on_stdout = function(_, data)
@@ -89,6 +95,15 @@ M.query_to_qflist = function(opts)
 			end)
 		end,
 	})
+end
+
+--- Populate the quickfix list with today's hard-landscape actions (scheduled
+--- or due on or before end of today). Wraps query_to_qflist with name="agenda".
+M.query_to_agenda = function(opts)
+	opts = opts or {}
+	opts.name = "agenda"
+	opts.title = opts.title or "clearhead agenda"
+	M.query_to_qflist(opts)
 end
 
 return M
