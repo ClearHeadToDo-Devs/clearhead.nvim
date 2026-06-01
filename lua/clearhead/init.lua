@@ -430,28 +430,26 @@ M._plugin_init = function()
 	create_command("ClearheadPickCharters", function()
 		M.pick_charter_doc()
 	end)
-	if vim.fn.exists(":ClearheadQflist") == 0 then
-		vim.api.nvim_create_user_command("ClearheadQflist", function(args)
+	if vim.fn.exists(":ClearheadQuery") == 0 then
+		vim.api.nvim_create_user_command("ClearheadQuery", function(args)
 			local name = args.args ~= "" and args.args or nil
+			local title = name and ("clearhead: " .. name) or "clearhead actions"
 			M.run_query(name, function(rows)
-				local items = {}
-				for _, row in ipairs(rows) do
-					if row.charter_root and row.source_file then
-						items[#items + 1] = {
-							filename = row.charter_root .. "/" .. row.source_file,
-							lnum = tonumber(row.source_line) or 1,
-							col = 1,
-							text = (row.name or "?") .. " [" .. (row.status or "?") .. "]",
-						}
-					end
-				end
-				if #items == 0 then
+				if #rows == 0 then
 					vim.notify("clearhead: no actions found.", vim.log.levels.WARN)
 					return
 				end
-				local title = name and ("clearhead: " .. name) or "clearhead actions"
-				vim.fn.setqflist({}, " ", { title = title, items = items })
-				vim.cmd("copen")
+				vim.ui.select(rows, {
+					prompt = title,
+					format_item = function(row)
+						return (row.name or "?") .. " [" .. (row.status or "?") .. "]"
+					end,
+				}, function(choice)
+					if choice and choice.charter_root and choice.source_file then
+						vim.cmd("edit " .. vim.fn.fnameescape(choice.charter_root .. "/" .. choice.source_file))
+						vim.api.nvim_win_set_cursor(0, { tonumber(choice.source_line) or 1, 0 })
+					end
+				end)
 			end)
 		end, { nargs = "?" })
 	end
