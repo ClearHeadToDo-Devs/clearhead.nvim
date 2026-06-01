@@ -67,6 +67,7 @@ Install with any plugin manager. Example using lazy.nvim: >lua
       "ClearheadArchiveWorkspace",
       "ClearheadPickActions",
       "ClearheadPickCharters",
+      "ClearheadQuery",
     },
   }
 <
@@ -642,6 +643,31 @@ These commands are always available regardless of the current filetype.
     (`*.md`, `**/README.md`) across all visible workspace roots.
     Equivalent to `<localleader>S`.
 
+                                                    *:ClearheadQuery*
+:ClearheadQuery [name]
+    Run a named workspace query and open the results in `vim.ui.select`.
+    Each row carries source location fields (`charter_root`, `source_file`,
+    `source_line`) so selecting an entry jumps to the action in its file.
+
+    With a picker plugin (telescope, fzf-lua, snacks) installed, the picker's
+    built-in send-to-qflist action (e.g. `<C-q>` in telescope) populates the
+    quickfix list — no manual wiring required.
+
+    [name] is the stem of a `.sparql` file saved under:
+      `~/.clearhead/queries/qflist/`       user-global
+      `<workspace>/.clearhead/queries/qflist/`  project-local
+
+    Built-in named queries ~
+      (none)    All open actions with source locations (default)
+      agenda    Hard-landscape actions: scheduled or due on or before
+                end of today. Overdue items included. No undated actions.
+
+    Examples: >vim
+      :ClearheadQuery             " all open actions
+      :ClearheadQuery agenda      " today's hard landscape
+      :ClearheadQuery my-filter   " user query at queries/qflist/my-filter.sparql
+<
+
 ==============================================================================
 8. LSP CAPABILITIES                                          *clearhead-lsp*
 
@@ -882,6 +908,44 @@ current window.
     Walk upward from the buffer in `winnr` to find the nearest
     `.clearhead/`, then open `charters/next.actions` inside it.
     Falls back to |clearhead.open_inbox()| if none is found.
+
+                                                  *clearhead.run_query()*
+`run_query({name}, {callback})`
+    Run a named qflist query and pass the parsed rows to `callback(rows)`.
+    Shells out to `clearhead query qflist [name]` asynchronously.
+
+    `name` (string|nil) — named query variant, e.g. `"agenda"`. Pass `nil`
+    for the default (all open actions with source locations).
+
+    `callback` (function) — called with a list of row tables on success.
+    Each row contains at minimum: >
+
+      row.name          string   action name
+      row.status        string   "NotStarted" | "InProgress" | "Blocked" | …
+      row.source_file   string   path relative to charter_root
+      row.source_line   string   1-based line number (as string)
+      row.charter_root  string   absolute path to the workspace charter root
+<
+    Named queries may return additional columns (e.g. `scheduled_at`,
+    `due_date`). Extra fields are passed through as-is.
+
+    The callback is responsible for display. Example using `vim.ui.select`: >lua
+
+      require("clearhead").run_query("agenda", function(rows)
+        vim.ui.select(rows, {
+          prompt = "agenda",
+          format_item = function(r) return r.name .. " [" .. r.status .. "]" end,
+        }, function(choice)
+          if choice then
+            vim.cmd("edit " .. vim.fn.fnameescape(
+              choice.charter_root .. "/" .. choice.source_file))
+            vim.api.nvim_win_set_cursor(0, { tonumber(choice.source_line), 0 })
+          end
+        end)
+      end)
+<
+    Errors (binary not found, CLI failure, JSON parse failure) are reported
+    via `vim.notify` at `ERROR` level; the callback is not called.
 
 ==============================================================================
 11. CONFORM.NVIM INTEGRATION                             *clearhead-conform*

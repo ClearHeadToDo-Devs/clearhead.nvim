@@ -4,6 +4,7 @@
 :ClearheadPickActions	clearhead.txt	/*:ClearheadPickActions*
 :ClearheadPickCharters	clearhead.txt	/*:ClearheadPickCharters*
 :ClearheadProjectRoot	clearhead.txt	/*:ClearheadProjectRoot*
+:ClearheadQuery	clearhead.txt	/*:ClearheadQuery*
 :ClearheadWorkspace	clearhead.txt	/*:ClearheadWorkspace*
 clearhead	clearhead.txt	/*clearhead*
 clearhead-api	clearhead.txt	/*clearhead-api*
@@ -45,6 +46,7 @@ clearhead.open_project_root()	clearhead.txt	/*clearhead.open_project_root()*
 clearhead.open_workspace()	clearhead.txt	/*clearhead.open_workspace()*
 clearhead.pick_action_file()	clearhead.txt	/*clearhead.pick_action_file()*
 clearhead.pick_charter_doc()	clearhead.txt	/*clearhead.pick_charter_doc()*
+clearhead.run_query()	clearhead.txt	/*clearhead.run_query()*
 clearhead.set_state()	clearhead.txt	/*clearhead.set_state()*
 clearhead.set_state_tree()	clearhead.txt	/*clearhead.set_state_tree()*
 clearhead.setup()	clearhead.txt	/*clearhead.setup()*
