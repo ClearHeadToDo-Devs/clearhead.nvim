@@ -19,11 +19,12 @@ local function find_project_root(start)
 	return nil
 end
 
---- Run a named qflist query and pass the parsed rows to callback(rows).
+--- Run a named index query and pass the parsed rows to callback(rows).
 ---
---- Calls `clearhead query qflist [name]` and returns the JSON rows as-is.
---- Each row contains: name, status, source_file, source_line, charter_root,
---- plus any extra columns the query returns (e.g. scheduled_at, due_date).
+--- Calls `clearhead query index [name]` and returns the JSON rows as-is.
+--- Each row satisfies the index contract: id (canonical urn:uuid IRI — the
+--- address for mutation verbs), name, status, source_file, source_line,
+--- charter_root, plus any sort keys the query emits (e.g. scheduled_at).
 ---
 --- The caller decides what to do with the rows — qflist, vim.ui.select,
 --- a telescope picker, or anything else.
@@ -41,7 +42,7 @@ M.run_query = function(name, callback)
 	local start = buf_path ~= "" and buf_path or vim.fn.getcwd()
 	local cwd = find_project_root(start) or config.expand_path(config.values.data_dir)
 
-	local cmd = { bin, "query", "qflist" }
+	local cmd = { bin, "query", "index" }
 	if name then
 		cmd[#cmd + 1] = name
 	end
