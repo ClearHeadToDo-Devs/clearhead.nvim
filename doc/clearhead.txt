@@ -654,8 +654,8 @@ These commands are always available regardless of the current filetype.
     quickfix list — no manual wiring required.
 
     [name] is the stem of a `.sparql` file saved under:
-      `~/.clearhead/queries/qflist/`       user-global
-      `<workspace>/.clearhead/queries/qflist/`  project-local
+      `~/.clearhead/queries/index/`       user-global
+      `<workspace>/.clearhead/queries/index/`  project-local
 
     Built-in named queries ~
       (none)    All open actions with source locations (default)
@@ -665,7 +665,7 @@ These commands are always available regardless of the current filetype.
     Examples: >vim
       :ClearheadQuery             " all open actions
       :ClearheadQuery agenda      " today's hard landscape
-      :ClearheadQuery my-filter   " user query at queries/qflist/my-filter.sparql
+      :ClearheadQuery my-filter   " user query at queries/index/my-filter.sparql
 <
 
 ==============================================================================
@@ -911,8 +911,8 @@ current window.
 
                                                   *clearhead.run_query()*
 `run_query({name}, {callback})`
-    Run a named qflist query and pass the parsed rows to `callback(rows)`.
-    Shells out to `clearhead query qflist [name]` asynchronously.
+    Run a named index query and pass the parsed rows to `callback(rows)`.
+    Shells out to `clearhead query index [name]` asynchronously.
 
     `name` (string|nil) — named query variant, e.g. `"agenda"`. Pass `nil`
     for the default (all open actions with source locations).
@@ -920,10 +920,11 @@ current window.
     `callback` (function) — called with a list of row tables on success.
     Each row contains at minimum: >
 
+      row.id            string   canonical action identity (`id` client surface)
       row.name          string   action name
       row.status        string   "NotStarted" | "InProgress" | "Blocked" | …
       row.source_file   string   path relative to charter_root
-      row.source_line   string   1-based line number (as string)
+      row.source_line   integer  1-based line number
       row.charter_root  string   absolute path to the workspace charter root
 <
     Named queries may return additional columns (e.g. `scheduled_at`,
