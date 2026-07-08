@@ -21,7 +21,9 @@ end
 
 --- Run a named index query and pass the parsed rows to callback(rows).
 ---
---- Calls `clearhead query index [name]` and returns the JSON rows as-is.
+--- Calls `clearhead query index [name]`, which emits a JSON-LD document
+--- (specifications/query_output.md). We are the "simple client": read the
+--- @graph array, ignore the @context.
 --- Each row satisfies the index contract: id (canonical urn:uuid IRI — the
 --- address for mutation verbs), name, status, source_file, source_line,
 --- charter_root, plus any sort keys the query emits (e.g. scheduled_at).
@@ -68,7 +70,7 @@ M.run_query = function(name, callback)
 					vim.notify("clearhead: failed to parse query output.", vim.log.levels.ERROR)
 					return
 				end
-				callback(rows)
+				callback(rows["@graph"] or rows)
 			end)
 		end,
 	})
