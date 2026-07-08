@@ -2,23 +2,6 @@ local M = {}
 
 local config = require("clearhead.config")
 
---- Walk up from path to find the nearest ancestor containing .clearhead/.
-local function find_project_root(start)
-	local stat = vim.uv.fs_stat(start)
-	local dir = (stat and stat.type == "directory") and start or vim.fn.fnamemodify(start, ":h")
-	while dir and dir ~= "" do
-		if vim.uv.fs_stat(dir .. "/.clearhead") then
-			return dir
-		end
-		local parent = vim.fn.fnamemodify(dir, ":h")
-		if parent == dir then
-			break
-		end
-		dir = parent
-	end
-	return nil
-end
-
 --- Run a named index query and pass the parsed rows to callback(rows).
 ---
 --- Calls `clearhead query index [name]`, which emits a JSON-LD document
@@ -40,9 +23,15 @@ M.run_query = function(name, callback)
 		return
 	end
 
+	-- Workspace resolution is delegated to the CLI (specifications/
+	-- configuration.md, Workspace Resolution): run it from the buffer's
+	-- directory and the binary walks up for .clearhead/ itself, falling back
+	-- to the user workspace. One resolver, no drift.
 	local buf_path = vim.api.nvim_buf_get_name(0)
-	local start = buf_path ~= "" and buf_path or vim.fn.getcwd()
-	local cwd = find_project_root(start) or config.expand_path(config.values.data_dir)
+	local cwd = buf_path ~= "" and vim.fn.fnamemodify(buf_path, ":h") or vim.fn.getcwd()
+	if vim.fn.isdirectory(cwd) == 0 then
+		cwd = vim.fn.getcwd()
+	end
 
 	local cmd = { bin, "query", "index" }
 	if name then
