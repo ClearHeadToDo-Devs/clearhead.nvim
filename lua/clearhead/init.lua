@@ -2,6 +2,7 @@ local config = require("clearhead.config")
 local lsp = require("clearhead.lsp")
 local actions = require("clearhead.actions")
 local query = require("clearhead.query")
+local view = require("clearhead.view")
 
 local M = {}
 local bootstrap_done = false
@@ -25,6 +26,7 @@ M.get_status = actions.get_status
 M.indent_action = actions.indent_action
 M.dedent_action = actions.dedent_action
 M.run_query = query.run_query
+M.open_view = view.open
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -432,25 +434,7 @@ M._plugin_init = function()
 	end)
 	if vim.fn.exists(":ClearheadQuery") == 0 then
 		vim.api.nvim_create_user_command("ClearheadQuery", function(args)
-			local name = args.args ~= "" and args.args or nil
-			local title = name and ("clearhead: " .. name) or "clearhead actions"
-			M.run_query(name, function(rows)
-				if #rows == 0 then
-					vim.notify("clearhead: no actions found.", vim.log.levels.WARN)
-					return
-				end
-				vim.ui.select(rows, {
-					prompt = title,
-					format_item = function(row)
-						return (row.name or "?") .. " [" .. (row.status or "?") .. "]"
-					end,
-				}, function(choice)
-					if choice and choice.charter_root and choice.source_file then
-						vim.cmd("edit " .. vim.fn.fnameescape(choice.charter_root .. "/" .. choice.source_file))
-						vim.api.nvim_win_set_cursor(0, { tonumber(choice.source_line) or 1, 0 })
-					end
-				end)
-			end)
+			M.open_view(args.args ~= "" and args.args or nil)
 		end, { nargs = "?" })
 	end
 
