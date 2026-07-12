@@ -27,6 +27,8 @@ M.indent_action = actions.indent_action
 M.dedent_action = actions.dedent_action
 M.run_query = query.run_query
 M.open_view = view.open
+M.refresh_view = view.refresh
+M.act_on_entry = view.act
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -402,6 +404,28 @@ M._plugin_init = function()
 		group = group,
 		callback = function()
 			vim.notify("File updated from disk.", vim.log.levels.INFO)
+		end,
+	})
+
+	-- Living-loop mappings in quickfix windows. The functions verify the list
+	-- is a clearhead view before acting, so foreign quickfix lists just warn.
+	vim.api.nvim_create_autocmd("FileType", {
+		pattern = "qf",
+		group = group,
+		callback = function(args)
+			if not config.values.nvim_default_mappings then
+				return
+			end
+			local function map(key, fn, desc)
+				vim.keymap.set("n", key, fn, { buffer = args.buf, desc = desc })
+			end
+			map("<localleader>x", function()
+				M.act_on_entry("complete")
+			end, "Complete action under cursor")
+			map("<localleader>_", function()
+				M.act_on_entry("cancel")
+			end, "Cancel action under cursor")
+			map("<localleader>r", M.refresh_view, "Refresh clearhead view")
 		end,
 	})
 

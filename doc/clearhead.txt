@@ -671,6 +671,22 @@ These commands are always available regardless of the current filetype.
       :ClearheadQuery weekly      " the week's horizon
       :ClearheadQuery my-filter   " user query at queries/index/my-filter.sparql
 <
+    The living loop ~
+                                                    *clearhead-living-loop*
+    Inside the quickfix window, with `nvim_default_mappings` enabled, the
+    view is alive — read → verb-by-id → re-read:
+
+      `<localleader>x`   Complete the action under the cursor
+      `<localleader>_`   Cancel the action under the cursor
+      `<localleader>r`   Re-run the view's query, rebuild the list
+
+    A verb addresses the entry's canonical id (never its line number), so
+    it acts on exactly that action even after the file shifted. After the
+    verb the list re-settles in place: completed work leaves, unblocked
+    successors surface, and the cursor keeps its row. Verbs are
+    save-gated — a modified buffer for the entry's file aborts the verb
+    (the CLI mutates the file on disk; save first). Foreign quickfix
+    lists are untouched: the mappings warn and do nothing.
 
 ==============================================================================
 8. LSP CAPABILITIES                                          *clearhead-lsp*
@@ -963,6 +979,25 @@ current window.
 
     `name` (string|nil) — named query variant, e.g. `"agenda"`. Pass `nil`
     for the default.
+
+                                               *clearhead.refresh_view()*
+`refresh_view()`
+    Re-run the current clearhead view's query and rebuild the quickfix
+    list in place, keeping the cursor's row (clamped to the new length).
+    Warns if the current list is not a clearhead view.
+
+                                               *clearhead.act_on_entry()*
+`act_on_entry({verb})`
+    Fire a mutation verb on the quickfix entry under the cursor by its
+    canonical id, then |clearhead.refresh_view()|. See
+    |clearhead-living-loop| for gating and re-settle behavior.
+
+    `verb` (string) — `"complete"` or `"cancel"`.
+
+    The CLI's typed result (query_output.md, "Errors as data") drives the
+    outcome: `completed`/`cancelled` notify and re-settle; an
+    `already-closed` or `not-found` (stale entry) result notifies and
+    refreshes rather than guessing.
 
 ==============================================================================
 11. CONFORM.NVIM INTEGRATION                             *clearhead-conform*
