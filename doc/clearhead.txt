@@ -658,18 +658,22 @@ These commands are always available regardless of the current filetype.
       `<workspace>/.clearhead/queries/index/`  project-local
 
     Built-in named queries ~
-      (none)    All open actions with source locations (default)
-      agenda    The daily list: actionable now — unblocked, lowest open
-                child, scheduled or due on or before end of today.
-                Overdue items included. No undated actions.
-      weekly    The horizon: everything open in the next seven days,
-                including blocked and undated work.
+      (none)       All open actions with source locations (default)
+      agenda       The daily list: actionable now — unblocked, lowest open
+                   child, scheduled or due on or before end of today.
+                   Overdue items included. No undated actions.
+      unscheduled  The agenda's complement for date-light projects:
+                   actionable now and unplanned — no scheduled/due date
+                   on the action or any ancestor. Sorted by priority.
+      weekly       The horizon: everything open in the next seven days,
+                   including blocked and undated work.
 
     Examples: >vim
-      :ClearheadQuery             " all open actions
-      :ClearheadQuery agenda      " today's list
-      :ClearheadQuery weekly      " the week's horizon
-      :ClearheadQuery my-filter   " user query at queries/index/my-filter.sparql
+      :ClearheadQuery              " all open actions
+      :ClearheadQuery agenda       " today's list
+      :ClearheadQuery unscheduled  " undated, actionable, by priority
+      :ClearheadQuery weekly       " the week's horizon
+      :ClearheadQuery my-filter    " user query at queries/index/my-filter.sparql
 <
     The living loop ~
                                                     *clearhead-living-loop*
