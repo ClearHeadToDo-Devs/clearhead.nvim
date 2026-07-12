@@ -1,7 +1,1 @@
 [x] test sidecar stamping on save #019e703c-e09c-7f91-bcc0-0d0d9f8d9bc7
-[x] get something where we are able do a query and actually find actions that have simple queries like priority and date %2026-07-11T22:52 #019d7e8f-c159-7be3-b3fe-f07dc10f9b1d
-    >[x] this should be something that returns all that is necessary to fill the qflist so that we can jump to the action from the query results %2026-07-11T22:52 #019db635-6767-7bb0-a64f-75c82d0c8a6f
-    >[x] add $invoke CLI expand acts for current charter; reload buffer on success; show act count added in notification$ %2026-07-11T22:52 #019db400-0002-7000-0000-000000000001
-    >[x] add $vim.ui.select picker over templates/ for current charter scope; select template → append generated acts into current buffer$ %2026-07-11T22:52 #019db400-0003-7000-0000-000000000001
-    >[x] update smart-new-action to not emit RRULE $post-Decision-21 the smart-new-action snippet should not offer a recurrence field; recurring acts are created via expand acts from a schedule$ %2026-05-25T11:09 #019db400-0004-7000-0000-000000000001
-[x] dogfood mcp server workflow [[with link| http://test.com]] $test navigating, editing, and saving .actions files via the neovim mcp server; note any friction points$ %2026-07-11T22:52 #019e702b-834c-7851-a527-df5d0bc55c28
