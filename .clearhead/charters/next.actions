@@ -1,2 +1,1 @@
 [ ] dogfood mcp server workflow [[with link| http://test.com]] $test navigating, editing, and saving .actions files via the neovim mcp server; note any friction points$ +agent #019e702b-834c-7851-a527-df5d0bc55c28
-[ ] debug index query not running in project workspace $when i run it from the platform project i just get error... this also indicates we need better debugging surface so that i and other tools can know more than "it went wrong" we need a debug output$ !2 +bug #019f5733-fb9e-77f0-a5e6-2de88864d547

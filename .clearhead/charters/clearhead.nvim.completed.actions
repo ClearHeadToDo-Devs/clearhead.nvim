@@ -3,3 +3,4 @@
     >[x] this should be something that returns all that is necessary to fill the qflist so that we can jump to the action from the query results %2026-07-12T09:39 #019db635-6767-7bb0-a64f-75c82d0c8a6f
     >[x] add $vim.ui.select picker over templates/ for current charter scope; select template → append generated acts into current buffer$ %2026-07-12T09:39 #019db400-0003-7000-0000-000000000001
     >[x] update smart-new-action to not emit RRULE $post-Decision-21 the smart-new-action snippet should not offer a recurrence field; recurring acts are created via expand acts from a schedule$ %2026-05-25T11:09 #019db400-0004-7000-0000-000000000001
+[x] debug index query not running in project workspace $when i run it from the platform project i just get error... this also indicates we need better debugging surface so that i and other tools can know more than "it went wrong" we need a debug output$ !2 +bug %2026-07-12T10:51 #019f5733-fb9e-77f0-a5e6-2de88864d547

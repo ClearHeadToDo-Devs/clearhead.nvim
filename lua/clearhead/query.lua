@@ -24,14 +24,11 @@ M.run_query = function(name, callback)
 	end
 
 	-- Workspace resolution is delegated to the CLI (specifications/
-	-- configuration.md, Workspace Resolution): run it from the buffer's
-	-- directory and the binary walks up for .clearhead/ itself, falling back
-	-- to the user workspace. One resolver, no drift.
-	local buf_path = vim.api.nvim_buf_get_name(0)
-	local cwd = buf_path ~= "" and vim.fn.fnamemodify(buf_path, ":h") or vim.fn.getcwd()
-	if vim.fn.isdirectory(cwd) == 0 then
-		cwd = vim.fn.getcwd()
-	end
+	-- configuration.md, Workspace Resolution): run it from Neovim's cwd and
+	-- the binary walks up for .clearhead/ itself. This respects :cd/:lcd and
+	-- autochdir, matching how the CLI resolves a workspace from a terminal —
+	-- the buffer's directory is not involved.
+	local cwd = vim.fn.getcwd()
 
 	local cmd = { bin, "query", "index" }
 	if name then
