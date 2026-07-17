@@ -1,0 +1,6 @@
+{
+  "$schema": "https://raw.githubusercontent.com/ClearHeadToDo-Devs/specifications/master/schemas/workspace.schema.json",
+  "created_at": "2026-07-17",
+  "workspace_id": "019f7284-1698-7b72-aa0a-4ac823df8f6b",
+  "workspace_name": "clearhead.nvim"
+}
