@@ -8,10 +8,11 @@ editor-native commands for working with `.actions` files.
 
 - Neovim 0.10+
 - `nvim-treesitter` with the `actions` grammar installed
-- `clearhead` CLI (optional but recommended — provides LSP, formatting, archiving)
-  ```bash
-  cargo install clearhead
-  ```
+- `clearhead-lsp` on `PATH` (or set `nvim_lsp_binary_path`) for editor features
+- `clearhead` CLI for mutations such as normalize and archive
+
+During the extraction transition, the plugin can temporarily fall back to
+`clearhead start lsp` when the standalone server is unavailable.
 
 ## Installation
 
@@ -49,7 +50,7 @@ require("clearhead").setup({
   nvim_auto_normalize   = true,      -- assign missing UUIDs on save
   nvim_format_on_save   = true,      -- format via LSP on BufWritePre
   nvim_lsp_enable       = true,      -- auto-attach clearhead-lsp
-  nvim_lsp_binary_path  = "",        -- explicit binary path (auto-detected)
+  nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
   nvim_inbox_file       = "",        -- override inbox path
   nvim_default_mappings = true,      -- enable <localleader> keybindings
   nvim_indent_style     = "spaces", -- buffer-local indent style for .actions

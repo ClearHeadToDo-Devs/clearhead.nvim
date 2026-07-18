@@ -88,13 +88,18 @@ check_config = function()
 
   -- LSP
   if cfg.nvim_lsp_enable then
-    local bin = config.get_bin_path()
-    if bin then
-      vim.health.ok("LSP enabled and binary found")
+    local command, legacy = config.get_lsp_command()
+    if command and not legacy then
+      vim.health.ok("LSP enabled and standalone clearhead-lsp found")
+    elseif command then
+      vim.health.warn(
+        "LSP is using the legacy clearhead start lsp fallback",
+        "Install clearhead-lsp or set nvim_lsp_binary_path in setup()"
+      )
     else
       vim.health.error(
-        "LSP enabled but binary not found",
-        "Install clearhead or set nvim_lsp_binary_path in setup()"
+        "LSP enabled but clearhead-lsp was not found",
+        "Install clearhead-lsp or set nvim_lsp_binary_path in setup()"
       )
     end
   else

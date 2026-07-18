@@ -86,16 +86,32 @@ M.load = function(user_opts)
 	return merged
 end
 
+--- Resolve the synchronous ClearHead command client.
 M.get_bin_path = function()
-	if M.values.nvim_lsp_binary_path and M.values.nvim_lsp_binary_path ~= "" then
-		local expanded = expand_path(M.values.nvim_lsp_binary_path)
-		return vim.fn.executable(expanded) == 1 and expanded or nil
-	end
 	if vim.fn.executable("clearhead") == 1 then
 		return "clearhead"
 	end
 	local cargo_bin = vim.fn.expand("~") .. "/.cargo/bin/clearhead"
 	return vim.fn.executable(cargo_bin) == 1 and cargo_bin or nil
+end
+
+--- Resolve the LSP process command. The standalone server is canonical; the
+--- CLI subcommand is a temporary compatibility fallback during extraction.
+--- Returns command argv and whether the legacy fallback was selected.
+M.get_lsp_command = function()
+	if M.values.nvim_lsp_binary_path and M.values.nvim_lsp_binary_path ~= "" then
+		local expanded = expand_path(M.values.nvim_lsp_binary_path)
+		return vim.fn.executable(expanded) == 1 and { expanded } or nil, false
+	end
+	if vim.fn.executable("clearhead-lsp") == 1 then
+		return { "clearhead-lsp" }, false
+	end
+	local cargo_bin = vim.fn.expand("~") .. "/.cargo/bin/clearhead-lsp"
+	if vim.fn.executable(cargo_bin) == 1 then
+		return { cargo_bin }, false
+	end
+	local legacy = M.get_bin_path()
+	return legacy and { legacy, "start", "lsp" } or nil, legacy ~= nil
 end
 
 return M

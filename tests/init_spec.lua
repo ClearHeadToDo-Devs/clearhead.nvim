@@ -138,6 +138,39 @@ describe("clearhead", function()
     assert.are.equal("work", clearhead._testing["charter-stem"](sub_readme))
   end)
 
+  it("configures the standalone clearhead-lsp command directly", function()
+    local config = require("clearhead.config")
+    local lsp = require("clearhead.lsp")
+    local old_get_lsp_command = config.get_lsp_command
+    local old_lsp_config = vim.lsp.config
+    local old_lsp_enable = vim.lsp.enable
+    local old_values = vim.deepcopy(config.values)
+    local captured
+
+    config.values.nvim_lsp_enable = true
+    config.values.data_dir = "/tmp/clearhead-test"
+    config.values.additional_workspaces = {}
+    config.get_lsp_command = function()
+      return { "/opt/clearhead/bin/clearhead-lsp" }, false
+    end
+    vim.lsp.config = function(name, opts)
+      captured = { name = name, opts = opts }
+    end
+    vim.lsp.enable = function() end
+    lsp.configured_signature = nil
+
+    local ok, result = pcall(lsp.setup)
+    config.get_lsp_command = old_get_lsp_command
+    vim.lsp.config = old_lsp_config
+    vim.lsp.enable = old_lsp_enable
+    config.values = old_values
+
+    assert.is_true(ok, result)
+    assert.is_true(result)
+    assert.are.equal("clearhead-lsp", captured.name)
+    assert.are.same({ "/opt/clearhead/bin/clearhead-lsp" }, captured.opts.cmd)
+  end)
+
   it("archives actions by saving, invoking the CLI, then reloading on success", function()
     local tmp = vim.fn.tempname()
     local project = tmp .. "/project"

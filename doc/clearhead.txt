@@ -100,7 +100,7 @@ All keys are optional; defaults shown below. >lua
     nvim_auto_normalize   = true,      -- add missing UUIDs on save
     nvim_format_on_save   = true,      -- format on BufWritePre via LSP
     nvim_lsp_enable       = true,      -- auto-start clearhead-lsp
-    nvim_lsp_binary_path  = "",        -- explicit binary path (auto-detected)
+    nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
     nvim_inbox_file       = "",        -- override inbox path
     nvim_default_mappings = true,      -- enable <localleader> keybindings
     nvim_indent_style     = "spaces", -- buffer-local indent style
@@ -141,10 +141,15 @@ Environment variables ~
                                                     *clearhead-config-bin-path*
 Binary path resolution ~
 
-The plugin resolves the `clearhead` binary in this order:
+The plugin resolves the LSP process command in this order:
   1. `nvim_lsp_binary_path` if set and executable
-  2. `clearhead` on `$PATH`
-  3. `~/.cargo/bin/clearhead`
+  2. `clearhead-lsp` on `$PATH`
+  3. `~/.cargo/bin/clearhead-lsp`
+  4. temporary compatibility fallback: `clearhead start lsp`
+
+The synchronous command client is resolved separately as `clearhead` on
+`$PATH`, then `~/.cargo/bin/clearhead`. Configuring an LSP path never redirects
+archive or normalize commands to the server binary.
 
 ==============================================================================
 5. TUTORIAL                                               *clearhead-tutorial*
@@ -697,12 +702,12 @@ These commands are always available regardless of the current filetype.
 ==============================================================================
 8. LSP CAPABILITIES                                          *clearhead-lsp*
 
-The `clearhead-lsp` server (bundled with the `clearhead` binary) attaches
-automatically to `.actions` buffers when `nvim_lsp_enable = true`.
+The standalone `clearhead-lsp` server attaches automatically to `.actions`
+buffers when `nvim_lsp_enable = true`.
 
 Start manually: >sh
 
-  clearhead start lsp
+  clearhead-lsp
 <
 
   Capability            What it does ~

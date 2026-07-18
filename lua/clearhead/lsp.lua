@@ -24,8 +24,8 @@ local function build_workspace_folders()
 	return folders
 end
 
-local function signature_for(bin, data_dir, folders)
-	local parts = { tostring(config.values.nvim_lsp_enable), bin or "", data_dir or "" }
+local function signature_for(command, data_dir, folders)
+	local parts = { tostring(config.values.nvim_lsp_enable), table.concat(command or {}, "\0"), data_dir or "" }
 	for _, folder in ipairs(folders) do
 		parts[#parts + 1] = folder.name .. "=" .. folder.uri
 	end
@@ -39,11 +39,11 @@ M.setup = function()
 		return false
 	end
 
-	local bin = config.get_bin_path()
-	if not bin then
+	local command, legacy = config.get_lsp_command()
+	if not command then
 		if not M.missing_bin_notified then
 			vim.notify(
-				"clearhead binary not found. LSP disabled. Install with 'cargo install --path .' in the CLI directory.",
+				"clearhead-lsp not found. Install the standalone server or set nvim_lsp_binary_path.",
 				vim.log.levels.WARN
 			)
 			M.missing_bin_notified = true
@@ -54,13 +54,16 @@ M.setup = function()
 	M.missing_bin_notified = false
 	local data_dir = config.expand_path(config.values.data_dir)
 	local workspace_folders = build_workspace_folders()
-	local signature = signature_for(bin, data_dir, workspace_folders)
+	local signature = signature_for(command, data_dir, workspace_folders)
 	if M.configured_signature == signature then
 		return true
 	end
+	if legacy then
+		vim.notify("Using legacy 'clearhead start lsp' fallback; install clearhead-lsp.", vim.log.levels.WARN)
+	end
 
 	vim.lsp.config("clearhead-lsp", {
-		cmd = { bin, "start", "lsp" },
+		cmd = command,
 		filetypes = { "actions" },
 		-- Stable root_dir = one server instance across all workspaces.
 		root_dir = function(_, on_dir)
