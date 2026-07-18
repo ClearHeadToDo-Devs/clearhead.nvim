@@ -33,8 +33,9 @@ clearhead.nvim is a thin-client Neovim plugin for the ClearHead personal
 action management platform. It works with `.actions` files — a plaintext
 DSL for capturing and organising work items.
 
-The plugin delegates business logic (archiving, formatting, linting) to the
-`clearhead` CLI and LSP server. Local operations that benefit from low
+The plugin delegates durable mutations such as archiving to the `clearhead`
+CLI, and editor analysis/formatting to the standalone `clearhead-lsp` server.
+Local operations that benefit from low
 latency (state cycling, smart insertion, statusline counts) run directly via
 tree-sitter, so they work even offline or before the CLI is installed.
 
