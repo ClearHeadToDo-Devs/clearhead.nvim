@@ -514,26 +514,6 @@ end
 
 M.archive = function(bufnr)
 	bufnr = bufnr or vim.api.nvim_get_current_buf()
-	local clients = vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr })
-	local client = clients[1]
-	if client then
-		client:request("workspace/executeCommand", {
-			command = "clearhead/archive",
-			arguments = { vim.uri_from_bufnr(bufnr) },
-		}, function(err)
-			if err then
-				vim.schedule(function()
-					vim.notify("Archive failed: " .. (err.message or "unknown error"), vim.log.levels.ERROR)
-				end)
-				return
-			end
-			vim.schedule(function()
-				vim.notify("Archived completed actions.")
-			end)
-		end, bufnr)
-		return
-	end
-
 	local filename = vim.api.nvim_buf_get_name(bufnr)
 	local bin = config.get_bin_path()
 	if filename == "" or not bin then
@@ -541,9 +521,15 @@ M.archive = function(bufnr)
 		return
 	end
 
-	-- .completed.actions files hold already-closed actions waiting to be swept
-	-- into archive.ttl. Route them to `archive charter --file` so the CLI can
-	-- infer the correct charter even for root files like charters/next.completed.actions.
+	-- The CLI owns archival as one durable workspace mutation. Save the
+	-- editor-owned buffer first; only reload or close it after the process
+	-- reports success.
+	vim.api.nvim_buf_call(bufnr, function()
+		vim.cmd("write")
+	end)
+
+	-- .completed.actions files belong to closed-charter archival. Route them to
+	-- `archive charter --file` so the CLI can infer root `next` charters too.
 	local tail = vim.fn.fnamemodify(filename, ":t")
 	if tail:match("%.completed%.actions$") then
 		vim.fn.jobstart({ bin, "archive", "charter", "--file", filename }, {
@@ -551,7 +537,10 @@ M.archive = function(bufnr)
 			on_exit = function(_, exit_code)
 				vim.schedule(function()
 					if exit_code == 0 then
-						vim.notify("Current charter archived to archive.ttl.")
+						if vim.api.nvim_buf_is_valid(bufnr) then
+							vim.api.nvim_buf_delete(bufnr, { force = true })
+						end
+						vim.notify("Current charter archived.")
 					else
 						vim.notify(
 							"Current charter must have 'state: Closed' in its .md file. "
@@ -567,21 +556,21 @@ M.archive = function(bufnr)
 		return
 	end
 
-	vim.api.nvim_buf_call(bufnr, function()
-		vim.cmd("write")
-	end)
 	vim.fn.jobstart({ bin, "archive", "actions", "--file", filename }, {
+		cwd = project_root_for_path(filename),
 		on_exit = function(_, exit_code)
-			if exit_code == 0 then
-				vim.schedule(function()
-					vim.api.nvim_buf_call(bufnr, function()
-						vim.api.nvim_command("edit!")
-					end)
+			vim.schedule(function()
+				if exit_code == 0 then
+					if vim.api.nvim_buf_is_valid(bufnr) then
+						vim.api.nvim_buf_call(bufnr, function()
+							vim.api.nvim_command("edit!")
+						end)
+					end
 					vim.notify("Archived completed actions.")
-				end)
-			else
-				vim.notify("Archive failed.", vim.log.levels.ERROR)
-			end
+				else
+					vim.notify("Archive failed.", vim.log.levels.ERROR)
+				end
+			end)
 		end,
 		on_stdout = on_output(nil),
 		on_stderr = on_output("Archive error: "),
@@ -621,29 +610,15 @@ M.archive_charter = function(opts)
 		return
 	end
 
-	-- Prefer LSP path (in-process, no subprocess spawn).
-	local clients = vim.lsp.get_clients({ name = "clearhead-lsp", bufnr = bufnr })
-	local client = clients[1]
-	if client then
-		client:request("workspace/executeCommand", {
-			command = "clearhead/archiveCharter",
-			-- Pass empty string for charter_name: LSP derives it from the URI.
-			arguments = { vim.uri_from_bufnr(bufnr), "", opts.force or false, opts.dry_run or false },
-		}, function(err)
-			if err then
-				vim.schedule(function()
-					vim.notify("Archive charter failed: " .. (err.message or "unknown error"), vim.log.levels.ERROR)
-				end)
-			end
-		end, bufnr)
-		return
-	end
-
 	local bin = config.get_bin_path()
 	if not bin then
 		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
 		return
 	end
+
+	vim.api.nvim_buf_call(bufnr, function()
+		vim.cmd("write")
+	end)
 
 	local cmd = { bin, "archive", "charter", "--file", buf_path }
 	if opts.force then
@@ -652,7 +627,23 @@ M.archive_charter = function(opts)
 	if opts.dry_run then
 		table.insert(cmd, "--dry-run")
 	end
-	run_charter_cmd(cmd, "Charter archived.", "Archive charter", project_root_for_path(buf_path))
+	vim.fn.jobstart(cmd, {
+		cwd = project_root_for_path(buf_path),
+		on_exit = function(_, exit_code)
+			vim.schedule(function()
+				if exit_code == 0 then
+					if not opts.dry_run and vim.api.nvim_buf_is_valid(bufnr) then
+						vim.api.nvim_buf_delete(bufnr, { force = true })
+					end
+					vim.notify(opts.dry_run and "Charter archive dry run complete." or "Charter archived.")
+				else
+					vim.notify("Archive charter failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
+				end
+			end)
+		end,
+		on_stdout = on_output(nil),
+		on_stderr = on_output("Archive charter error: "),
+	})
 end
 
 --- Archive all charters whose frontmatter carries `state: Closed`.

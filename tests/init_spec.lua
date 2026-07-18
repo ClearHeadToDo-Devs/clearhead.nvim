@@ -138,6 +138,45 @@ describe("clearhead", function()
     assert.are.equal("work", clearhead._testing["charter-stem"](sub_readme))
   end)
 
+  it("archives actions by saving, invoking the CLI, then reloading on success", function()
+    local tmp = vim.fn.tempname()
+    local project = tmp .. "/project"
+    local path = project .. "/.clearhead/charters/next.actions"
+    vim.fn.mkdir(project .. "/.clearhead/charters", "p")
+    vim.fn.writefile({ "[ ] Task" }, path)
+    vim.cmd("edit " .. vim.fn.fnameescape(path))
+    local bufnr = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "[x] Task" })
+
+    local config = require("clearhead.config")
+    local old_get_bin_path = config.get_bin_path
+    local old_jobstart = vim.fn.jobstart
+    local captured
+    config.get_bin_path = function()
+      return "clearhead"
+    end
+    vim.fn.jobstart = function(cmd, opts)
+      captured = { cmd = cmd, opts = opts, disk = vim.fn.readfile(path) }
+      return 1
+    end
+
+    local ok, err = pcall(clearhead.archive, bufnr)
+    config.get_bin_path = old_get_bin_path
+    vim.fn.jobstart = old_jobstart
+    assert.is_true(ok, err)
+    assert.are.same({ "[x] Task" }, captured.disk)
+    assert.are.same({ "clearhead", "archive", "actions", "--file", path }, captured.cmd)
+    assert.are.equal(project, captured.opts.cwd)
+    assert.is_true(vim.api.nvim_buf_is_valid(bufnr))
+
+    captured.opts.on_exit(nil, 0)
+    vim.wait(100, function()
+      return not vim.bo[bufnr].modified
+    end)
+    assert.is_true(vim.api.nvim_buf_is_valid(bufnr))
+    assert.is_false(vim.bo[bufnr].modified)
+  end)
+
   it("should register commands without requiring setup", function()
     clearhead._testing["plugin-init"]()
     assert.are.equal(2, vim.fn.exists(":ClearheadInbox"))

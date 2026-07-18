@@ -158,7 +158,7 @@ finished charter. If you want a specific topic jump directly to its section.
   |clearhead-tut-workflow|  — the daily capture → act → archive loop
   |clearhead-tut-charters|  — organising work into charters
   |clearhead-tut-projects|  — per-project .clearhead/ workspaces
-  |clearhead-tut-archive|   — the full lifecycle to archive.ttl
+  |clearhead-tut-archive|   — the full plaintext archival lifecycle
 
 ------------------------------------------------------------------------------
 5.1 FIRST CAPTURE                                      *clearhead-tut-capture*
@@ -382,7 +382,7 @@ area of responsibility, or theme. Each charter gets its own `.actions` file.
 Workspace layout ~
 >
   ~/.local/share/clearhead/
-  ├── archive.ttl              ← all closed history
+  ├── archive/                 ← archived charter/action plaintext
   ├── charters/
   │   ├── inbox.actions        ← uncategorised captures
   │   ├── work.actions         ← a flat charter
@@ -496,18 +496,21 @@ Stage 2: Completed  (`<charter>.completed.actions`)
   Completed and cancelled actions, kept for recent history and reference.
   This file accumulates over time and can be cleaned up independently.
 
-Stage 3: Archive  (`archive.ttl` at the workspace root)
-  Permanent read-only history. Written only when a whole charter is
-  archived. Not a plain-text file — use `clearhead read archive` to query.
+Stage 3: Archive  (`archive/` at the workspace root)
+  Permanent read-only plaintext history. When a whole charter is archived,
+  its charter, action, completed-action, and sidecar files move together under
+  `archive/`, preserving their paths relative to `charters/`.
 
 Moving from Stage 1 → Stage 2 ~
 
-Press `<localleader>a` in any active `.actions` buffer. The LSP command
-`clearhead/archive` sweeps completed and cancelled actions out of the file
-and into `<charter>.completed.actions`.
-
-If the LSP is not attached, the CLI fallback runs:
+Press `<localleader>a` in any active `.actions` buffer. The plugin saves the
+buffer, runs:
   `clearhead archive actions --file <filename>`
+
+Core commits the active and completed files as one durable workspace mutation.
+The plugin reloads the buffer only after the CLI exits successfully. The LSP
+never archives on save and exposes no archive command because an editor-owned
+buffer cannot participate in the filesystem transaction.
 
 Moving from Stage 2 → Stage 3 (charter archive) ~
 
@@ -521,11 +524,10 @@ This requires two steps:
        `clearhead archive charter <name>`
 
      What happens:
-       - All completed actions from `.completed.actions` → `archive.ttl`
-       - All planned instances from `plans/<charter>/` → `archive.ttl`
-       - The charter metadata itself → `archive.ttl`
-       - The now-empty `.actions`, `.completed.actions`, and `plans/`
-         directory are removed
+       - The charter markdown, `.actions`, `.completed.actions`, and sidecar
+         files move together under the workspace `archive/` directory
+       - Nested child-charter files move with their parent subtree
+       - Calendar plan files remain in the workspace plan vdir
 
 To archive all closed charters in one pass: >vim
 
@@ -580,7 +582,7 @@ File operations ~
                      file to `.completed.actions` (redirects to charter
                      archive when in a `.completed.actions` buffer;
                      requires `state: Closed` for that path)
-  `<localleader>A`   Archive the whole current charter to `archive.ttl`
+  `<localleader>A`   Move the whole current charter under `archive/`
                      (requires `state: Closed` in charter frontmatter)
   `<localleader>C`   Close the current charter
   `<localleader>o`   Insert new `[ ]` below current line at same depth
@@ -732,8 +734,8 @@ Start manually: >sh
                         skipped depth levels, completed parent with open
                         children, and more (see |clearhead-lsp-diagnostics|)
 
-  Execute Command       `clearhead/archive` — sweep completed action trees
-                        (returns WorkspaceEdit; no buffer reload needed)
+  Archive Mutations     Not exposed by the LSP. Clients save the buffer, run
+                        the CLI's durable mutation, then reload/close on success.
 
   Telemetry (on save)   Diff saved state to emit action lifecycle events
 
@@ -852,13 +854,13 @@ current window.
 
                                                    *clearhead.archive()*
 `archive([bufnr])`
-    Sweep completed and cancelled actions from `bufnr` to
-    `<charter>.completed.actions`. Delegates to the LSP
-    `clearhead/archive` command when attached; falls back to the CLI.
+    Sweep completed and cancelled action trees from `bufnr` to
+    `<charter>.completed.actions`. Saves the buffer, invokes the CLI's durable
+    archive operation, and reloads only after success.
 
-    When `bufnr` points to a `.completed.actions` file the function
-    redirects to `archive charter <name>` (see |clearhead.archive_charter()|)
-    to correctly send those actions to `archive.ttl`.
+    When `bufnr` points to a `.completed.actions` file the function redirects
+    to `archive charter --file <filename>` (see |clearhead.archive_charter()|)
+    and closes the moved buffer only after success.
 
                                            *clearhead.archive_charter()*
 `archive_charter([{opts}])`
