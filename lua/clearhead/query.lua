@@ -34,6 +34,9 @@ M.run_query = function(name, callback)
 	if name then
 		cmd[#cmd + 1] = name
 	end
+	-- The index family's machine default is NDJSON. Request the semantic
+	-- document explicitly because this client consumes its @graph framing.
+	vim.list_extend(cmd, { "--format", "jsonld" })
 
 	local chunks = {}
 	vim.fn.jobstart(cmd, {
