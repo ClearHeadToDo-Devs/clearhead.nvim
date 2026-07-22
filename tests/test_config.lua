@@ -32,6 +32,7 @@ assert_eq(ctx.config.default_file, "inbox.actions", "Default file should be inbo
 assert_eq(#ctx.config.additional_workspaces, 0, "Default additional_workspaces should be empty")
 assert_eq(ctx.config.nvim_indent_style, "spaces", "Default indent style should be spaces")
 assert_eq(ctx.config.nvim_indent_width, 4, "Default indent width should be 4")
+assert_eq(ctx.config.nvim_graphd_binary_path, "", "Default graphd path should be auto-detected")
 
 -- Test user options override
 local ctx2 = testing["load-config-internal"]({
@@ -39,10 +40,12 @@ local ctx2 = testing["load-config-internal"]({
     additional_workspaces = {"/tmp/extra"},
     nvim_indent_style = "tabs",
     nvim_indent_width = 2,
+    nvim_graphd_binary_path = "/tmp/clearhead-graphd",
 })
 assert_eq(ctx2.config.default_file, "test.actions", "User option should override default_file")
 assert_eq(ctx2.config.additional_workspaces[1], "/tmp/extra", "User option should override additional_workspaces")
 assert_eq(ctx2.config.nvim_indent_style, "tabs", "User option should override indent style")
 assert_eq(ctx2.config.nvim_indent_width, 2, "User option should override indent width")
+assert_eq(ctx2.config.nvim_graphd_binary_path, "/tmp/clearhead-graphd", "User option should override graphd path")
 
 print("All config tests passed!")

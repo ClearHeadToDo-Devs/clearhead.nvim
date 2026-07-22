@@ -34,7 +34,8 @@ action management platform. It works with `.actions` files — a plaintext
 DSL for capturing and organising work items.
 
 The plugin delegates durable mutations such as archiving to the `clearhead`
-CLI, and editor analysis/formatting to the standalone `clearhead-lsp` server.
+CLI, graph reads to `clearhead-graphd`, and editor analysis/formatting to the
+standalone `clearhead-lsp` server.
 Local operations that benefit from low
 latency (state cycling, smart insertion, statusline counts) run directly via
 tree-sitter, so they work even offline or before the CLI is installed.
@@ -48,9 +49,10 @@ any tooling, and every file is safe to commit to version control.
   - Neovim 0.10+
   - tree-sitter support enabled
   - `nvim-treesitter` with the `actions` grammar installed
-  - `clearhead` CLI (optional but recommended for LSP, formatting, archiving)
-    Install:        `cargo install clearhead`
-    Build source:   `cd clearhead-cli && cargo build`
+  - `clearhead` CLI for durable mutations
+  - `clearhead-graphd` for query views
+  - `clearhead-lsp` for document intelligence
+    Build source from each sibling repository with `cargo build`.
 
 ==============================================================================
 3. SETUP                                                    *clearhead-setup*
@@ -102,6 +104,7 @@ All keys are optional; defaults shown below. >lua
     nvim_format_on_save   = true,      -- format on BufWritePre via LSP
     nvim_lsp_enable       = true,      -- auto-start clearhead-lsp
     nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
+    nvim_graphd_binary_path = "",      -- explicit clearhead-graphd path (auto-detected)
     nvim_inbox_file       = "",        -- override inbox path
     nvim_default_mappings = true,      -- enable <localleader> keybindings
     nvim_indent_style     = "spaces", -- buffer-local indent style
@@ -135,6 +138,7 @@ Environment variables ~
   CLEARHEAD_NVIM_LSP_ENABLE
   CLEARHEAD_NVIM_INBOX_FILE
   CLEARHEAD_NVIM_LSP_BINARY_PATH
+  CLEARHEAD_NVIM_GRAPHD_BINARY_PATH
   CLEARHEAD_NVIM_DEFAULT_MAPPINGS
   CLEARHEAD_NVIM_INDENT_STYLE
   CLEARHEAD_NVIM_INDENT_WIDTH
@@ -148,9 +152,11 @@ The plugin resolves the LSP process command in this order:
   3. `~/.cargo/bin/clearhead-lsp`
   4. temporary compatibility fallback: `clearhead start lsp`
 
-The synchronous command client is resolved separately as `clearhead` on
-`$PATH`, then `~/.cargo/bin/clearhead`. Configuring an LSP path never redirects
-archive or normalize commands to the server binary.
+The graph query tool resolves independently through `nvim_graphd_binary_path`,
+`clearhead-graphd` on `$PATH`, then `~/.cargo/bin/clearhead-graphd`. The
+synchronous mutation client similarly resolves as `clearhead` on `$PATH`, then
+`~/.cargo/bin/clearhead`. Configuring one tool never redirects another tool's
+commands.
 
 ==============================================================================
 5. TUTORIAL                                               *clearhead-tutorial*
@@ -944,7 +950,8 @@ current window.
                                                   *clearhead.run_query()*
 `run_query({name}, {callback})`
     Run a named index query and pass the parsed rows to `callback(rows)`.
-    Shells out to `clearhead query index [name]` asynchronously.
+    Shells out directly to `clearhead-graphd query index [name]` asynchronously
+    and requests the index JSON-LD contract explicitly.
 
     `name` (string|nil) — named query variant, e.g. `"agenda"`. Pass `nil`
     for the default (all open actions with source locations).
@@ -977,7 +984,7 @@ current window.
         end)
       end)
 <
-    Errors (binary not found, CLI failure, JSON parse failure) are reported
+    Errors (binary not found, graphd failure, JSON parse failure) are reported
     via `vim.notify` at `ERROR` level; the callback is not called.
 
                                                   *clearhead.open_view()*

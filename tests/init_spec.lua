@@ -11,6 +11,7 @@ describe("clearhead", function()
     assert.are.same({}, ctx.config.additional_workspaces)
     assert.are.equal("spaces", ctx.config.nvim_indent_style)
     assert.are.equal(4, ctx.config.nvim_indent_width)
+    assert.are.equal("", ctx.config.nvim_graphd_binary_path)
   end)
 
   it("should allow indentation defaults to be overridden", function()
@@ -136,6 +137,23 @@ describe("clearhead", function()
     assert.are.equal("sample-project", clearhead._testing["charter-stem"](root_actions))
     assert.are.equal("sample-project", clearhead._testing["charter-stem"](root_completed))
     assert.are.equal("work", clearhead._testing["charter-stem"](sub_readme))
+  end)
+
+  it("resolves an explicit standalone graphd binary", function()
+    local config = require("clearhead.config")
+    local old_executable = vim.fn.executable
+    local old_values = vim.deepcopy(config.values)
+
+    config.values.nvim_graphd_binary_path = "/opt/clearhead/bin/clearhead-graphd"
+    vim.fn.executable = function(path)
+      return path == "/opt/clearhead/bin/clearhead-graphd" and 1 or 0
+    end
+
+    local graphd = config.get_graphd_path()
+    vim.fn.executable = old_executable
+    config.values = old_values
+
+    assert.are.equal("/opt/clearhead/bin/clearhead-graphd", graphd)
   end)
 
   it("configures the standalone clearhead-lsp command directly", function()

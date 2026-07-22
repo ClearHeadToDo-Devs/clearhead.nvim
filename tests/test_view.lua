@@ -11,7 +11,7 @@ local function assert_eq(actual, expected, name)
 	end
 end
 
--- A row as emitted by `clearhead query index agenda` (query_output.md contract)
+-- A row emitted by `clearhead-graphd query index agenda` (index contract)
 local entry = view.to_qf_entry({
 	id = "urn:uuid:87a4395a-1dea-4d10-a82c-ae0b2e5d8985",
 	name = "Make mutation verbs addressable by a bare id",

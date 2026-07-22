@@ -4,7 +4,7 @@ local config = require("clearhead.config")
 
 --- Run a named index query and pass the parsed rows to callback(rows).
 ---
---- Calls `clearhead query index [name]`, which emits a JSON-LD document
+--- Calls `clearhead-graphd query index [name]`, which emits a JSON-LD document
 --- (specifications/query_output.md). We are the "simple client": read the
 --- @graph array, ignore the @context.
 --- Each row satisfies the index contract: id (canonical urn:uuid IRI — the
@@ -17,20 +17,19 @@ local config = require("clearhead.config")
 --- name (string?) — named variant (e.g. "agenda"); omit for default
 --- callback (function) — receives list of row tables, called on success
 M.run_query = function(name, callback)
-	local bin = config.get_bin_path()
-	if not bin then
-		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
+	local graphd = config.get_graphd_path()
+	if not graphd then
+		vim.notify("clearhead-graphd binary not found.", vim.log.levels.ERROR)
 		return
 	end
 
-	-- Workspace resolution is delegated to the CLI (specifications/
-	-- configuration.md, Workspace Resolution): run it from Neovim's cwd and
-	-- the binary walks up for .clearhead/ itself. This respects :cd/:lcd and
-	-- autochdir, matching how the CLI resolves a workspace from a terminal —
-	-- the buffer's directory is not involved.
+	-- graphd is the public read/query tool. Give it Neovim's cwd as the
+	-- workspace hint so its core-backed loader performs the same ancestor
+	-- discovery a direct terminal invocation would. The buffer is deliberately
+	-- not involved: :cd/:lcd and autochdir define the active query workspace.
 	local cwd = vim.fn.getcwd()
 
-	local cmd = { bin, "query", "index" }
+	local cmd = { graphd, "--workspace", cwd, "query", "index" }
 	if name then
 		cmd[#cmd + 1] = name
 	end
@@ -50,7 +49,7 @@ M.run_query = function(name, callback)
 		on_exit = function(_, exit_code)
 			vim.schedule(function()
 				if exit_code ~= 0 then
-					vim.notify("clearhead query failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
+					vim.notify("clearhead-graphd query failed (exit " .. exit_code .. ").", vim.log.levels.ERROR)
 					return
 				end
 				local raw = table.concat(chunks, "\n")

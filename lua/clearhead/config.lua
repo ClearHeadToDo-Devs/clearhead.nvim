@@ -10,6 +10,7 @@ local DEFAULTS = {
 	nvim_lsp_enable = true,
 	nvim_inbox_file = "",
 	nvim_lsp_binary_path = "",
+	nvim_graphd_binary_path = "",
 	nvim_default_mappings = true,
 	nvim_indent_style = "spaces",
 	nvim_indent_width = 4,
@@ -52,6 +53,7 @@ local function load_env()
 		CLEARHEAD_NVIM_LSP_ENABLE = "nvim_lsp_enable",
 		CLEARHEAD_NVIM_INBOX_FILE = "nvim_inbox_file",
 		CLEARHEAD_NVIM_LSP_BINARY_PATH = "nvim_lsp_binary_path",
+		CLEARHEAD_NVIM_GRAPHD_BINARY_PATH = "nvim_graphd_binary_path",
 		CLEARHEAD_NVIM_DEFAULT_MAPPINGS = "nvim_default_mappings",
 		CLEARHEAD_NVIM_INDENT_STYLE = "nvim_indent_style",
 		CLEARHEAD_NVIM_INDENT_WIDTH = "nvim_indent_width",
@@ -92,6 +94,19 @@ M.get_bin_path = function()
 		return "clearhead"
 	end
 	local cargo_bin = vim.fn.expand("~") .. "/.cargo/bin/clearhead"
+	return vim.fn.executable(cargo_bin) == 1 and cargo_bin or nil
+end
+
+--- Resolve graphd, the standalone query/read/export tool.
+M.get_graphd_path = function()
+	if M.values.nvim_graphd_binary_path and M.values.nvim_graphd_binary_path ~= "" then
+		local expanded = expand_path(M.values.nvim_graphd_binary_path)
+		return vim.fn.executable(expanded) == 1 and expanded or nil
+	end
+	if vim.fn.executable("clearhead-graphd") == 1 then
+		return "clearhead-graphd"
+	end
+	local cargo_bin = vim.fn.expand("~") .. "/.cargo/bin/clearhead-graphd"
 	return vim.fn.executable(cargo_bin) == 1 and cargo_bin or nil
 end
 

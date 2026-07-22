@@ -2,7 +2,7 @@ local config = require("clearhead.config")
 
 local M = {}
 
-local check_neovim, check_cli, check_treesitter, check_config
+local check_neovim, check_cli, check_graphd, check_treesitter, check_config
 
 -- =============================================================================
 -- Public API
@@ -11,6 +11,7 @@ local check_neovim, check_cli, check_treesitter, check_config
 M.check = function()
   check_neovim()
   check_cli()
+  check_graphd()
   check_treesitter()
   check_config()
 end
@@ -44,6 +45,25 @@ check_cli = function()
     vim.health.ok(version .. " (" .. bin .. ")")
   else
     vim.health.warn("Binary found but --version failed", bin)
+  end
+end
+
+check_graphd = function()
+  vim.health.start("clearhead: graphd binary")
+  local bin = config.get_graphd_path()
+  if not bin then
+    vim.health.error(
+      "clearhead-graphd not found",
+      "Install clearhead-graphd or set nvim_graphd_binary_path in setup()"
+    )
+    return
+  end
+
+  vim.fn.system({ bin, "--help" })
+  if vim.v.shell_error == 0 then
+    vim.health.ok("clearhead-graphd available (" .. bin .. ")")
+  else
+    vim.health.warn("Binary found but --help failed", bin)
   end
 end
 

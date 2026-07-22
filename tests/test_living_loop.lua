@@ -1,9 +1,10 @@
 -- End-to-end living loop: read → verb-by-id → re-read over a temp workspace.
--- Requires the `clearhead` binary on PATH; skips (exit 0) when absent so the
--- standalone suite stays runnable without a Rust toolchain.
+-- Requires the independent `clearhead` mutation client and `clearhead-graphd`
+-- query tool on PATH; skips when either is absent so the standalone suite
+-- stays runnable without a Rust toolchain.
 -- Run: LUA_PATH="./lua/?.lua;./lua/?/init.lua;;" nvim -l tests/test_living_loop.lua
-if vim.fn.executable("clearhead") == 0 then
-	print("SKIP: clearhead binary not on PATH")
+if vim.fn.executable("clearhead") == 0 or vim.fn.executable("clearhead-graphd") == 0 then
+	print("SKIP: clearhead and clearhead-graphd binaries are required on PATH")
 	return
 end
 
@@ -21,7 +22,7 @@ local function wait_for(pred, what)
 end
 
 -- Build an initialized workspace in a temp dir and start nvim's cwd there so
--- the CLI's cwd-walk resolves it.
+-- graphd and the CLI's core-backed cwd walks resolve it.
 local root = vim.fn.tempname()
 local charters = root .. "/.clearhead/charters"
 vim.fn.mkdir(charters, "p")
