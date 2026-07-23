@@ -2,7 +2,7 @@ local M = {}
 
 local config = require("clearhead.config")
 
-local function run_family(family, name, format, callback)
+local function run_family(family, name, format, decode_json, callback)
 	local graphd = config.get_graphd_path()
 	if not graphd then
 		vim.notify("clearhead-graphd binary not found.", vim.log.levels.ERROR)
@@ -50,6 +50,10 @@ local function run_family(family, name, format, callback)
 					return
 				end
 				local raw = table.concat(stdout, "\n")
+				if not decode_json then
+					callback(raw)
+					return
+				end
 				local ok, result = pcall(vim.json.decode, raw)
 				if not ok or type(result) ~= "table" then
 					vim.notify("clearhead: failed to parse " .. family .. " query output.", vim.log.levels.ERROR)
@@ -65,14 +69,19 @@ end
 --- The index family's machine default is NDJSON; request JSON-LD explicitly
 --- because this client consumes its semantic @graph framing.
 M.run_query = function(name, callback)
-	run_family("index", name, "jsonld", function(document)
+	run_family("index", name, "jsonld", true, function(document)
 		callback(document["@graph"] or document)
 	end)
 end
 
 --- Run a named tree query and pass its validated nested nodes to callback(tree).
 M.run_tree = function(name, callback)
-	run_family("tree", name, "json", callback)
+	run_family("tree", name, "json", true, callback)
+end
+
+--- Run a named graph query and pass its Graphviz DOT projection to callback(dot).
+M.run_graph = function(name, callback)
+	run_family("graph", name, "dot", false, callback)
 end
 
 return M

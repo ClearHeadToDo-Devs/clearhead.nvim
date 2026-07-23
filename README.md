@@ -33,6 +33,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
     "ClearheadPickCharters",
     "ClearheadQuery",
     "ClearheadTree",
+    "ClearheadGraph",
   },
 }
 ```
@@ -43,6 +44,10 @@ The plugin works without calling `setup()`. Commands are registered from
 Use `:ClearheadTree` for a graph-backed charter/action work map. The read-only
 view opens source files with `<CR>`, toggles branches with `<Space>`, and
 re-runs the tree query with `r`.
+
+Use `:ClearheadGraph` for the dependency network as an actual DOT buffer. Press
+`p` to render it to SVG through Graphviz, `r` to refresh, or edit/copy the DOT
+with the normal Neovim ecosystem.
 
 ## Setup
 

@@ -4,6 +4,7 @@ local actions = require("clearhead.actions")
 local query = require("clearhead.query")
 local view = require("clearhead.view")
 local tree_view = require("clearhead.tree_view")
+local graph_view = require("clearhead.graph_view")
 
 local M = {}
 local bootstrap_done = false
@@ -32,6 +33,9 @@ M.refresh_view = view.refresh
 M.act_on_entry = view.act
 M.open_tree = tree_view.open
 M.refresh_tree = tree_view.refresh
+M.open_graph = graph_view.open
+M.refresh_graph = graph_view.refresh
+M.preview_graph = graph_view.preview
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -467,6 +471,11 @@ M._plugin_init = function()
 	if vim.fn.exists(":ClearheadTree") == 0 then
 		vim.api.nvim_create_user_command("ClearheadTree", function(args)
 			M.open_tree(args.args ~= "" and args.args or nil)
+		end, { nargs = "?" })
+	end
+	if vim.fn.exists(":ClearheadGraph") == 0 then
+		vim.api.nvim_create_user_command("ClearheadGraph", function(args)
+			M.open_graph(args.args ~= "" and args.args or nil)
 		end, { nargs = "?" })
 	end
 
