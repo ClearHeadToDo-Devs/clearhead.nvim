@@ -10,7 +10,7 @@ local function current_view_name()
 	return type(ctx) == "table" and ctx.clearhead_query or nil
 end
 
---- Map one index row (specifications/query_output.md) to a quickfix entry.
+--- Map one graphd index-contract row to a quickfix entry.
 --- The line number navigates; the id acts: filename/lnum are the fragile
 --- jump target, user_data carries the canonical id mutation verbs address.
 M.to_qf_entry = function(row)

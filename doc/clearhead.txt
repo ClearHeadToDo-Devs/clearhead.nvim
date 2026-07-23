@@ -689,6 +689,21 @@ These commands are always available regardless of the current filetype.
       :ClearheadQuery weekly       " the week's horizon
       :ClearheadQuery my-filter    " user query at queries/index/my-filter.sparql
 <
+                                                    *:ClearheadTree*
+:ClearheadTree [name]
+    Run a named tree-family query and render its validated hierarchy in a
+    read-only scratch split. [name] defaults to `work-map`, the graph-backed
+    charter and open-action hierarchy.
+
+      `<CR>`    Open the charter Markdown file or action source line
+      `<Space>` Expand or collapse the current branch
+      `r`       Re-run the tree query
+      `q`       Close the tree split
+
+    The view consumes `clearhead-graphd query tree [name] --format json`
+    directly. Canonical identity and parentage come from graphd; Neovim only
+    projects the validated nested result.
+
     The living loop ~
                                                     *clearhead-living-loop*
     Inside the quickfix window, with `nvim_default_mappings` enabled, the
@@ -986,6 +1001,18 @@ current window.
 <
     Errors (binary not found, graphd failure, JSON parse failure) are reported
     via `vim.notify` at `ERROR` level; the callback is not called.
+
+                                                   *clearhead.open_tree()*
+`open_tree({name})`
+    Run a named tree query and render it in a read-only scratch split — the
+    Lua entry point behind |:ClearheadTree|. `name` defaults to `work-map`.
+    Charter and action locators open their canonical source files; action
+    locators also carry the source line.
+
+                                                *clearhead.refresh_tree()*
+`refresh_tree()`
+    Re-run the query behind the current tree buffer while preserving expanded
+    and collapsed identities.
 
                                                   *clearhead.open_view()*
 `open_view({name})`

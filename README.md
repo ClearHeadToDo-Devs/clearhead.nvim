@@ -31,12 +31,18 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
     "ClearheadArchiveWorkspace",
     "ClearheadPickActions",
     "ClearheadPickCharters",
+    "ClearheadQuery",
+    "ClearheadTree",
   },
 }
 ```
 
 The plugin works without calling `setup()`. Commands are registered from
 `plugin/`, and buffer-local behavior is applied from `ftplugin/`.
+
+Use `:ClearheadTree` for a graph-backed charter/action work map. The read-only
+view opens source files with `<CR>`, toggles branches with `<Space>`, and
+re-runs the tree query with `r`.
 
 ## Setup
 

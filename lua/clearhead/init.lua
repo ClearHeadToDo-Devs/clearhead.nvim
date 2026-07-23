@@ -3,6 +3,7 @@ local lsp = require("clearhead.lsp")
 local actions = require("clearhead.actions")
 local query = require("clearhead.query")
 local view = require("clearhead.view")
+local tree_view = require("clearhead.tree_view")
 
 local M = {}
 local bootstrap_done = false
@@ -29,6 +30,8 @@ M.run_query = query.run_query
 M.open_view = view.open
 M.refresh_view = view.refresh
 M.act_on_entry = view.act
+M.open_tree = tree_view.open
+M.refresh_tree = tree_view.refresh
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -459,6 +462,11 @@ M._plugin_init = function()
 	if vim.fn.exists(":ClearheadQuery") == 0 then
 		vim.api.nvim_create_user_command("ClearheadQuery", function(args)
 			M.open_view(args.args ~= "" and args.args or nil)
+		end, { nargs = "?" })
+	end
+	if vim.fn.exists(":ClearheadTree") == 0 then
+		vim.api.nvim_create_user_command("ClearheadTree", function(args)
+			M.open_tree(args.args ~= "" and args.args or nil)
 		end, { nargs = "?" })
 	end
 
