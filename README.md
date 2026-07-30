@@ -61,6 +61,7 @@ require("clearhead").setup({
   additional_workspaces = {},        -- extra workspace roots to surface in pickers/LSP
   nvim_auto_normalize   = true,      -- assign missing UUIDs on save
   nvim_format_on_save   = true,      -- format via LSP on BufWritePre
+  nvim_archive_on_save  = false,     -- move terminal actions after each save
   nvim_lsp_enable       = true,      -- auto-attach clearhead-lsp
   nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
   nvim_graphd_binary_path = "",      -- explicit clearhead-graphd path (auto-detected)

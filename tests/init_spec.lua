@@ -12,6 +12,7 @@ describe("clearhead", function()
     assert.are.equal("spaces", ctx.config.nvim_indent_style)
     assert.are.equal(4, ctx.config.nvim_indent_width)
     assert.are.equal("", ctx.config.nvim_graphd_binary_path)
+    assert.is_false(ctx.config.nvim_archive_on_save)
   end)
 
   it("should allow indentation defaults to be overridden", function()
@@ -226,6 +227,58 @@ describe("clearhead", function()
     end)
     assert.is_true(vim.api.nvim_buf_is_valid(bufnr))
     assert.is_false(vim.bo[bufnr].modified)
+  end)
+
+  it("archives terminal actions synchronously after save", function()
+    local tmp = vim.fn.tempname()
+    local project = tmp .. "/project"
+    local path = project .. "/.clearhead/charters/next.actions"
+    vim.fn.mkdir(project .. "/.clearhead/charters", "p")
+    vim.fn.writefile({ "[ ] Keep", "[x] Archive" }, path)
+    vim.cmd("edit " .. vim.fn.fnameescape(path))
+    local bufnr = vim.api.nvim_get_current_buf()
+
+    local config = require("clearhead.config")
+    local old_get_bin_path = config.get_bin_path
+    local old_system = vim.system
+    local captured
+    config.get_bin_path = function()
+      return "clearhead"
+    end
+    vim.system = function(cmd, opts)
+      captured = { cmd = cmd, opts = opts }
+      vim.fn.writefile({ "[ ] Keep" }, path)
+      return { wait = function() return { code = 0, stdout = "", stderr = "" } end }
+    end
+
+    local ok, err = pcall(clearhead.archive_saved, bufnr)
+    config.get_bin_path = old_get_bin_path
+    vim.system = old_system
+
+    assert.is_true(ok, err)
+    assert.are.same({ "clearhead", "archive", "actions", "--file", path }, captured.cmd)
+    assert.are.equal(project, captured.opts.cwd)
+    assert.are.same({ "[ ] Keep" }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+  end)
+
+  it("does not turn completed-history saves into charter archival", function()
+    local tmp = vim.fn.tempname()
+    local path = tmp .. "/next.completed.actions"
+    vim.fn.mkdir(tmp, "p")
+    vim.fn.writefile({ "[x] History" }, path)
+    vim.cmd("edit " .. vim.fn.fnameescape(path))
+
+    local old_system = vim.system
+    local called = false
+    vim.system = function()
+      called = true
+      error("must not run")
+    end
+    local ok, err = pcall(clearhead.archive_saved, vim.api.nvim_get_current_buf())
+    vim.system = old_system
+
+    assert.is_true(ok, err)
+    assert.is_false(called)
   end)
 
   it("should register commands without requiring setup", function()

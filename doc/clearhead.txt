@@ -102,6 +102,7 @@ All keys are optional; defaults shown below. >lua
     -- Neovim-specific
     nvim_auto_normalize   = true,      -- add missing UUIDs on save
     nvim_format_on_save   = true,      -- format on BufWritePre via LSP
+    nvim_archive_on_save  = false,     -- move terminal actions after save
     nvim_lsp_enable       = true,      -- auto-start clearhead-lsp
     nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
     nvim_graphd_binary_path = "",      -- explicit clearhead-graphd path (auto-detected)
@@ -135,6 +136,7 @@ Environment variables ~
   CLEARHEAD_ADDITIONAL_WORKSPACES
   CLEARHEAD_NVIM_AUTO_NORMALIZE
   CLEARHEAD_NVIM_FORMAT_ON_SAVE
+  CLEARHEAD_NVIM_ARCHIVE_ON_SAVE
   CLEARHEAD_NVIM_LSP_ENABLE
   CLEARHEAD_NVIM_INBOX_FILE
   CLEARHEAD_NVIM_LSP_BINARY_PATH
@@ -520,9 +522,14 @@ buffer, runs:
   `clearhead archive actions --file <filename>`
 
 Core commits the active and completed files as one durable workspace mutation.
-The plugin reloads the buffer only after the CLI exits successfully. The LSP
-never archives on save and exposes no archive command because an editor-owned
-buffer cannot participate in the filesystem transaction.
+The plugin reloads the buffer only after the CLI exits successfully.
+
+Set `nvim_archive_on_save = true` to perform this Stage 1 → Stage 2 sweep after
+every save of an active action file. This post-save path waits for the durable
+CLI mutation and reloads before accepting more edits, preventing an old buffer
+from resurrecting archived lines. It deliberately ignores `.completed.actions`
+and `.upcoming.actions` files. The LSP itself never archives on save and exposes
+no archive command; the Neovim client owns this opt-in orchestration.
 
 Moving from Stage 2 → Stage 3 (charter archive) ~
 
@@ -897,7 +904,8 @@ current window.
 `archive([bufnr])`
     Sweep completed and cancelled action trees from `bufnr` to
     `<charter>.completed.actions`. Saves the buffer, invokes the CLI's durable
-    archive operation, and reloads only after success.
+    archive operation, and reloads only after success. Set
+    `nvim_archive_on_save = true` to run the active-file sweep automatically.
 
     When `bufnr` points to a `.completed.actions` file the function redirects
     to `archive charter --file <filename>` (see |clearhead.archive_charter()|)

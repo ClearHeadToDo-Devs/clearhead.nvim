@@ -396,6 +396,16 @@ M._plugin_init = function()
 		end,
 	})
 
+	vim.api.nvim_create_autocmd("BufWritePost", {
+		pattern = "*.actions",
+		group = group,
+		callback = function(args)
+			if config.values.nvim_archive_on_save then
+				M.archive_saved(args.buf)
+			end
+		end,
+	})
+
 	vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "CursorHoldI" }, {
 		pattern = "*.actions",
 		group = group,
@@ -528,6 +538,44 @@ end
 -- ---------------------------------------------------------------------------
 -- File operations
 -- ---------------------------------------------------------------------------
+
+--- Archive terminal actions immediately after an active action file is saved.
+--- This path is synchronous by design: allowing edits while the CLI moves
+--- lines on disk could let a later write resurrect the archived actions.
+M.archive_saved = function(bufnr)
+	bufnr = bufnr or vim.api.nvim_get_current_buf()
+	local filename = vim.api.nvim_buf_get_name(bufnr)
+	local tail = vim.fn.fnamemodify(filename, ":t")
+	if filename == "" or tail:match("%.completed%.actions$") or tail:match("%.upcoming%.actions$") then
+		return
+	end
+
+	local bin = config.get_bin_path()
+	if not bin then
+		vim.notify("Cannot archive on save: clearhead CLI not found.", vim.log.levels.ERROR)
+		return
+	end
+	local before = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+	local result = vim.system(
+		{ bin, "archive", "actions", "--file", filename },
+		{ cwd = project_root_for_path(filename), text = true }
+	):wait()
+	if result.code ~= 0 then
+		local detail = vim.trim(result.stderr or "")
+		vim.notify(
+			"Archive on save failed" .. (detail ~= "" and ": " .. detail or "."),
+			vim.log.levels.ERROR
+		)
+		return
+	end
+
+	if vim.api.nvim_buf_is_valid(bufnr) and not vim.deep_equal(before, vim.fn.readfile(filename)) then
+		vim.api.nvim_buf_call(bufnr, function()
+			vim.cmd("silent edit!")
+		end)
+	end
+end
 
 M.archive = function(bufnr)
 	bufnr = bufnr or vim.api.nvim_get_current_buf()

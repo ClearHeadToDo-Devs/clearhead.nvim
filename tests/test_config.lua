@@ -33,6 +33,7 @@ assert_eq(#ctx.config.additional_workspaces, 0, "Default additional_workspaces s
 assert_eq(ctx.config.nvim_indent_style, "spaces", "Default indent style should be spaces")
 assert_eq(ctx.config.nvim_indent_width, 4, "Default indent width should be 4")
 assert_eq(ctx.config.nvim_graphd_binary_path, "", "Default graphd path should be auto-detected")
+assert_eq(ctx.config.nvim_archive_on_save, false, "Archive on save should be opt-in")
 
 -- Test user options override
 local ctx2 = testing["load-config-internal"]({
