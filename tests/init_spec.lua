@@ -202,31 +202,27 @@ describe("clearhead", function()
 
     local config = require("clearhead.config")
     local old_get_bin_path = config.get_bin_path
-    local old_jobstart = vim.fn.jobstart
+    local old_system = vim.system
     local captured
     config.get_bin_path = function()
       return "clearhead"
     end
-    vim.fn.jobstart = function(cmd, opts)
+    vim.system = function(cmd, opts)
       captured = { cmd = cmd, opts = opts, disk = vim.fn.readfile(path) }
-      return 1
+      vim.fn.writefile({}, path)
+      return { wait = function() return { code = 0, stdout = "", stderr = "" } end }
     end
 
     local ok, err = pcall(clearhead.archive, bufnr)
     config.get_bin_path = old_get_bin_path
-    vim.fn.jobstart = old_jobstart
+    vim.system = old_system
     assert.is_true(ok, err)
     assert.are.same({ "[x] Task" }, captured.disk)
     assert.are.same({ "clearhead", "archive", "actions", "--file", path }, captured.cmd)
     assert.are.equal(project, captured.opts.cwd)
     assert.is_true(vim.api.nvim_buf_is_valid(bufnr))
-
-    captured.opts.on_exit(nil, 0)
-    vim.wait(100, function()
-      return not vim.bo[bufnr].modified
-    end)
-    assert.is_true(vim.api.nvim_buf_is_valid(bufnr))
     assert.is_false(vim.bo[bufnr].modified)
+    assert.are.same({ "" }, vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
   end)
 
   it("archives terminal actions synchronously after save", function()
@@ -279,6 +275,37 @@ describe("clearhead", function()
 
     assert.is_true(ok, err)
     assert.is_false(called)
+  end)
+
+  it("does not run manual and on-save archival twice", function()
+    local tmp = vim.fn.tempname()
+    local project = tmp .. "/project"
+    local path = project .. "/.clearhead/charters/next.actions"
+    vim.fn.mkdir(project .. "/.clearhead/charters", "p")
+    vim.fn.writefile({ "[ ] Task" }, path)
+    vim.cmd("edit " .. vim.fn.fnameescape(path))
+    local bufnr = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "[x] Task" })
+
+    local config = require("clearhead.config")
+    local old_get_bin_path = config.get_bin_path
+    local old_system = vim.system
+    local calls = 0
+    config.get_bin_path = function() return "clearhead" end
+    vim.system = function()
+      calls = calls + 1
+      vim.fn.writefile({}, path)
+      return { wait = function() return { code = 0, stdout = "", stderr = "" } end }
+    end
+    clearhead._testing["load-config-internal"]({ nvim_archive_on_save = true })
+    clearhead._testing["plugin-init"]()
+
+    local ok, err = pcall(clearhead.archive, bufnr)
+    config.get_bin_path = old_get_bin_path
+    vim.system = old_system
+
+    assert.is_true(ok, err)
+    assert.are.equal(1, calls)
   end)
 
   it("should register commands without requiring setup", function()

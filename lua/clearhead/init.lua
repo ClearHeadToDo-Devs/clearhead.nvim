@@ -586,17 +586,13 @@ M.archive = function(bufnr)
 		return
 	end
 
-	-- The CLI owns archival as one durable workspace mutation. Save the
-	-- editor-owned buffer first; only reload or close it after the process
-	-- reports success.
-	vim.api.nvim_buf_call(bufnr, function()
-		vim.cmd("write")
-	end)
-
 	-- .completed.actions files belong to closed-charter archival. Route them to
 	-- `archive charter --file` so the CLI can infer root `next` charters too.
 	local tail = vim.fn.fnamemodify(filename, ":t")
 	if tail:match("%.completed%.actions$") then
+		vim.api.nvim_buf_call(bufnr, function()
+			vim.cmd("write")
+		end)
 		vim.fn.jobstart({ bin, "archive", "charter", "--file", filename }, {
 			cwd = project_root_for_path(filename),
 			on_exit = function(_, exit_code)
@@ -621,25 +617,15 @@ M.archive = function(bufnr)
 		return
 	end
 
-	vim.fn.jobstart({ bin, "archive", "actions", "--file", filename }, {
-		cwd = project_root_for_path(filename),
-		on_exit = function(_, exit_code)
-			vim.schedule(function()
-				if exit_code == 0 then
-					if vim.api.nvim_buf_is_valid(bufnr) then
-						vim.api.nvim_buf_call(bufnr, function()
-							vim.api.nvim_command("edit!")
-						end)
-					end
-					vim.notify("Archived completed actions.")
-				else
-					vim.notify("Archive failed.", vim.log.levels.ERROR)
-				end
-			end)
-		end,
-		on_stdout = on_output(nil),
-		on_stderr = on_output("Archive error: "),
-	})
+	-- Saving is the one entry point for active-file archival. When automatic
+	-- archival is enabled, BufWritePost invokes archive_saved synchronously.
+	-- Otherwise the manual mapping invokes that same primitive after the write.
+	vim.api.nvim_buf_call(bufnr, function()
+		vim.cmd("write")
+	end)
+	if not config.values.nvim_archive_on_save then
+		M.archive_saved(bufnr)
+	end
 end
 
 --- Archive the current charter (requires state: Closed in its frontmatter).
