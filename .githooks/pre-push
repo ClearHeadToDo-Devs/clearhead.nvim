@@ -25,6 +25,8 @@ for command in busted nlua nvim; do
 done
 
 echo "pre-push > busted tests"
-busted tests
+# Git supplies pushed refs on stdin. nlua treats non-TTY stdin as Lua source,
+# so isolate the test runner from the hook protocol instead of parsing refs.
+busted tests </dev/null
 
 echo "pre-push > all checks passed"
