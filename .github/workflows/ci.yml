@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugin
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Install Neovim
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/neovim/neovim/releases/download/v0.11.3/nvim-linux-x86_64.tar.gz \
+            --output /tmp/nvim.tar.gz
+          sudo tar --extract --gzip --file /tmp/nvim.tar.gz --directory /opt
+          sudo ln --symbolic /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+          nvim --version | head -n 1
+
+      - name: Install Lua test runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.1 liblua5.1-0-dev luarocks
+          sudo luarocks --lua-version=5.1 install busted 2.3.0-1
+          sudo luarocks --lua-version=5.1 install nlua 0.3.2-1
+
+      - name: Test
+        run: busted tests

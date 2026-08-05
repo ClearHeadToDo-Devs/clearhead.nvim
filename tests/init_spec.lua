@@ -1,6 +1,4 @@
-local describe = require('plenary.busted').describe
-local it = require('plenary.busted').it
-local assert = require('luassert')
+local assert = require("luassert")
 
 describe("clearhead", function()
   local clearhead = require('clearhead')
@@ -297,7 +295,10 @@ describe("clearhead", function()
       vim.fn.writefile({}, path)
       return { wait = function() return { code = 0, stdout = "", stderr = "" } end }
     end
-    clearhead._testing["load-config-internal"]({ nvim_archive_on_save = true })
+    clearhead._testing["load-config-internal"]({
+      nvim_archive_on_save = true,
+      nvim_format_on_save = false,
+    })
     clearhead._testing["plugin-init"]()
 
     local ok, err = pcall(clearhead.archive, bufnr)

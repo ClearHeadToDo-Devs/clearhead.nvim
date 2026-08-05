@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Pre-push gate for clearhead.nvim: run the real Busted suite inside Neovim
+# through nlua. CI repeats the same command in a clean environment.
+# Bypass in a genuine emergency with: git push --no-verify
+#
+set -eu
+
+hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$(dirname -- "$hook_dir")"
+
+if ! command -v luarocks >/dev/null 2>&1; then
+	echo "pre-push > missing 'luarocks'; install test dependencies from README.md" >&2
+	exit 1
+fi
+# User-local rocks need their Lua modules as well as executables visible inside
+# the Neovim process launched by nlua.
+eval "$(luarocks --lua-version=5.1 path)"
+
+for command in busted nlua nvim; do
+	if ! command -v "$command" >/dev/null 2>&1; then
+		echo "pre-push > missing '$command'; install test dependencies from README.md" >&2
+		exit 1
+	fi
+done
+
+echo "pre-push > busted tests"
+busted tests
+
+echo "pre-push > all checks passed"

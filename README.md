@@ -122,6 +122,27 @@ Full reference and tutorial in the built-in help:
 Covers setup, all keybindings, commands, LSP capabilities, the `.actions`
 format, workspace layout, daily workflow, archiving lifecycle, and the Lua API.
 
+## Development
+
+The test suite uses upstream [Busted](https://lunarmodules.github.io/busted/)
+inside Neovim through `nlua`; it does not depend on Plenary's retired test
+adapter. Install the Lua 5.1 test dependencies and run the suite with:
+
+```sh
+luarocks --lua-version=5.1 install --local busted 2.3.0-1
+luarocks --lua-version=5.1 install --local nlua 0.3.2-1
+eval "$(luarocks --lua-version=5.1 path)"
+busted tests
+```
+
+The living-loop integration test runs when both `clearhead` and
+`clearhead-graphd` are on `PATH`; otherwise Busted reports it as pending. To
+install the repository's pre-push gate:
+
+```sh
+git config core.hooksPath .githooks
+```
+
 ## License
 
 MIT
