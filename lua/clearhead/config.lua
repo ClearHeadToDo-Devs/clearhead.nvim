@@ -15,6 +15,7 @@ local DEFAULTS = {
 	nvim_default_mappings = true,
 	nvim_indent_style = "spaces",
 	nvim_indent_width = 4,
+	nvim_root_on_navigate = "lcd",
 }
 
 M.values = vim.deepcopy(DEFAULTS)
@@ -59,6 +60,7 @@ local function load_env()
 		CLEARHEAD_NVIM_DEFAULT_MAPPINGS = "nvim_default_mappings",
 		CLEARHEAD_NVIM_INDENT_STYLE = "nvim_indent_style",
 		CLEARHEAD_NVIM_INDENT_WIDTH = "nvim_indent_width",
+		CLEARHEAD_NVIM_ROOT_ON_NAVIGATE = "nvim_root_on_navigate",
 	}
 	local out = {}
 	for env_var, key in pairs(env_map) do

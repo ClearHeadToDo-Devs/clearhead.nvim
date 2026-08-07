@@ -110,6 +110,7 @@ All keys are optional; defaults shown below. >lua
     nvim_default_mappings = true,      -- enable <localleader> keybindings
     nvim_indent_style     = "spaces", -- buffer-local indent style
     nvim_indent_width     = 4,         -- buffer-local indent width
+    nvim_root_on_navigate = "lcd",     -- cwd on navigate: "lcd"|"tcd"|"cd"|false
   })
 <
                                                         *clearhead-config-xdg*

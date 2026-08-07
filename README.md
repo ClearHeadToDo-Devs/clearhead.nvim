@@ -69,6 +69,7 @@ require("clearhead").setup({
   nvim_default_mappings = true,      -- enable <localleader> keybindings
   nvim_indent_style     = "spaces", -- buffer-local indent style for .actions
   nvim_indent_width     = 4,         -- buffer-local indent width for .actions
+  nvim_root_on_navigate = "lcd",     -- cwd on navigate: "lcd"|"tcd"|"cd"|false
 })
 ```
 
@@ -100,6 +101,22 @@ hierarchies are included instead of only top-level files.
 
 For root-charter files like `charters/next.actions`, the picker shows the
 workspace/project name rather than the literal directory name `charters`.
+
+### Working directory
+
+The navigation commands (`:ClearheadInbox`, `:ClearheadWorkspace`,
+`:ClearheadProjectRoot`) and the pickers set the target window's working
+directory to the workspace root of what they open, so cwd-scoped tools
+(telescope, ripgrep, git) stay scoped to that workspace. Resolution follows the
+two-path rule: a project workspace roots at the project directory (the parent of
+its `.clearhead/`), while the user workspace (`data_dir`, which holds `charters/`
+directly, with no `.clearhead/` marker) roots at itself.
+
+`nvim_root_on_navigate` controls how: `"lcd"` (default, window-local — never
+disturbs other windows), `"tcd"` (tab-local), `"cd"` (global), or `false` to
+leave the working directory entirely alone. Even when disabled,
+`require("clearhead").workspace_root(path)` still exposes the resolver so you can
+wire your own cwd policy.
 
 ### Charter markdown mappings
 

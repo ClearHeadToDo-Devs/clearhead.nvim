@@ -11,6 +11,7 @@ describe("clearhead", function()
     assert.are.equal(4, ctx.config.nvim_indent_width)
     assert.are.equal("", ctx.config.nvim_graphd_binary_path)
     assert.is_false(ctx.config.nvim_archive_on_save)
+    assert.are.equal("lcd", ctx.config.nvim_root_on_navigate)
   end)
 
   it("should allow indentation defaults to be overridden", function()
@@ -136,6 +137,28 @@ describe("clearhead", function()
     assert.are.equal("sample-project", clearhead._testing["charter-stem"](root_actions))
     assert.are.equal("sample-project", clearhead._testing["charter-stem"](root_completed))
     assert.are.equal("work", clearhead._testing["charter-stem"](sub_readme))
+  end)
+
+  it("resolves the workspace cwd for both project and user workspaces", function()
+    local tmp = vim.fn.tempname()
+    -- Project workspace: cwd is the project dir (the parent of .clearhead/).
+    local project = tmp .. "/proj"
+    vim.fn.mkdir(project .. "/.clearhead/charters", "p")
+    vim.fn.writefile({ "[ ] root" }, project .. "/.clearhead/charters/next.actions")
+    -- User / bare workspace: charters/ sits at the root with no .clearhead/
+    -- marker, so cwd is the workspace dir itself — not its parent.
+    local userws = tmp .. "/userws"
+    vim.fn.mkdir(userws .. "/charters", "p")
+    vim.fn.writefile({ "[ ] inbox" }, userws .. "/charters/inbox.actions")
+
+    local resolve = clearhead._testing["workspace-cwd-for-path"]
+    assert.are.equal(project, resolve(project .. "/.clearhead/charters/next.actions"))
+    assert.are.equal(userws, resolve(userws .. "/charters/inbox.actions"))
+    assert.is_nil(resolve(tmp .. "/loose.txt"))
+
+    -- One resolver backs both the public API and the CLI-subprocess cwd, so the
+    -- editor and the CLI can never disagree on where the workspace root is.
+    assert.are.equal(userws, clearhead.workspace_root(userws .. "/charters/inbox.actions"))
   end)
 
   it("resolves an explicit standalone graphd binary", function()

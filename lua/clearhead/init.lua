@@ -247,11 +247,51 @@ local function workspace_root_for_charter_path(path)
 	return nil
 end
 
---- Derive the project root (parent of .clearhead/) from a file inside a workspace.
---- Returns nil if the path isn't inside a recognized workspace charter tree.
-local function project_root_for_path(path)
+--- Resolve the workspace root for a path, honoring the two-path split: a project
+--- workspace roots at the project directory (the parent of its .clearhead/); a
+--- bare / user workspace — data_dir holds charters/ directly with no .clearhead/
+--- marker — roots at the workspace directory itself. Returns nil when the path
+--- is outside any recognized workspace. This is the single resolver used for
+--- BOTH window cwd (navigation) and the CLI subprocess cwd (charter mutations).
+local function workspace_cwd_for_path(path)
 	local ws_root = workspace_root_for_charter_path(path)
-	return ws_root and vim.fn.fnamemodify(ws_root, ":h") or nil
+	if not ws_root then
+		return nil
+	end
+	if vim.fn.fnamemodify(ws_root, ":t") == ".clearhead" then
+		return vim.fn.fnamemodify(ws_root, ":h")
+	end
+	return ws_root
+end
+
+--- The directory a charter mutation should run the CLI from. Same resolver as
+--- window rooting — one definition of "the workspace root for this file", so the
+--- CLI cwd can't drift from where the editor thinks the workspace is.
+local project_root_for_path = workspace_cwd_for_path
+
+--- Public: the workspace root directory for a path — the dir the plugin would
+--- localize cwd into. Exposed so users who set nvim_root_on_navigate = false can
+--- wire their own cwd policy on top of our resolver.
+M.workspace_root = workspace_cwd_for_path
+
+--- Set a window's working directory so cwd-scoped tools (telescope, rg, git)
+--- operate inside the workspace. Policy comes from nvim_root_on_navigate:
+--- "lcd" (default, window-local — least invasive) | "tcd" (tab) | "cd" (global)
+--- | false / "none" to leave cwd entirely to the user. No-op when dir isn't a
+--- directory.
+local function set_window_cwd(winnr, dir)
+	local mode = config.values.nvim_root_on_navigate
+	if mode == false or mode == "none" or mode == "off" or mode == nil then
+		return
+	end
+	if not (dir and is_directory(dir)) then
+		return
+	end
+	local cmd = (mode == "cd" and "cd") or (mode == "tcd" and "tcd") or "lcd"
+	local win = (winnr == 0) and vim.api.nvim_get_current_win() or winnr
+	vim.api.nvim_win_call(win, function()
+		vim.cmd[cmd]({ args = { dir } })
+	end)
 end
 
 --- Derive a human-readable charter name from a file path inside charters/.
@@ -775,19 +815,26 @@ end
 --- Open the inbox file in the given window.
 --- winnr: window handle (0 = current window)
 M.open_inbox = function(winnr)
-	local path
+	local path, root
 	if config.values.nvim_inbox_file and config.values.nvim_inbox_file ~= "" then
 		path = config.expand_path(config.values.nvim_inbox_file)
+		-- A custom inbox may live inside a project; root to its workspace.
+		root = workspace_cwd_for_path(path)
 	else
-		path = config.expand_path(config.values.data_dir) .. "/charters/" .. config.values.default_file
+		-- The default inbox is the user workspace: data_dir is the root directly.
+		root = config.expand_path(config.values.data_dir)
+		path = root .. "/charters/" .. config.values.default_file
 	end
 	open_file_in_win(winnr, path)
+	set_window_cwd(winnr, root)
 end
 
 --- Open the workspace data directory in the given window.
 --- winnr: window handle (0 = current window)
 M.open_workspace = function(winnr)
-	open_file_in_win(winnr, config.expand_path(config.values.data_dir))
+	local root = config.expand_path(config.values.data_dir)
+	open_file_in_win(winnr, root)
+	set_window_cwd(winnr, root)
 end
 
 --- Walk upward from the current buffer's directory to find the nearest
@@ -805,6 +852,7 @@ M.open_project_root = function(winnr)
 		local stat = vim.uv.fs_stat(candidate)
 		if stat and stat.type == "directory" then
 			open_file_in_win(winnr, candidate .. "/charters/next.actions")
+			set_window_cwd(winnr, dir)
 			return
 		end
 		local parent = vim.fn.fnamemodify(dir, ":h")
@@ -866,6 +914,7 @@ M.pick_action_file = function()
 	}, function(choice)
 		if choice then
 			open_file_in_win(0, choice.path)
+			set_window_cwd(0, workspace_cwd_for_path(choice.path))
 		end
 	end)
 end
@@ -915,6 +964,7 @@ M.pick_charter_doc = function()
 	}, function(choice)
 		if choice then
 			open_file_in_win(0, choice.path)
+			set_window_cwd(0, workspace_cwd_for_path(choice.path))
 		end
 	end)
 end
@@ -959,6 +1009,9 @@ M._testing = {
 	end,
 	["charter-workspace-root"] = function(path)
 		return charter_workspace_root(path)
+	end,
+	["workspace-cwd-for-path"] = function(path)
+		return workspace_cwd_for_path(path)
 	end,
 	["charter-stem"] = function(path)
 		return charter_stem(path)
