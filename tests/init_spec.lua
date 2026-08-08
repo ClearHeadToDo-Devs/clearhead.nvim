@@ -108,10 +108,42 @@ describe("clearhead", function()
       got[root.charters] = root.label
     end
 
-    assert.are.equal("~", got[global .. "/charters"])
+    -- Inside a project the global/user workspace is configured but must NOT
+    -- appear: pickers stay project-scoped, so a configured data_dir is excluded.
+    assert.is_nil(got[global .. "/charters"])
     assert.are.equal("platform", got[platform .. "/.clearhead/charters"])
     assert.are.equal("clearhead.nvim", got[plugin .. "/.clearhead/charters"])
     assert.are.equal("clearhead-cli", got[sibling .. "/.clearhead/charters"])
+  end)
+
+  it("falls back to the user workspace when no project root is found", function()
+    local tmp = vim.fn.tempname()
+    vim.fn.mkdir(tmp, "p")
+
+    local global = tmp .. "/global"
+    -- A loose directory with no .clearhead ancestor: not inside any project.
+    local loose = tmp .. "/loose"
+    vim.fn.mkdir(global .. "/charters", "p")
+    vim.fn.mkdir(loose, "p")
+    vim.fn.writefile({ "[ ] global" }, global .. "/charters/inbox.actions")
+
+    clearhead._testing["load-config-internal"]({
+      data_dir = global,
+      additional_workspaces = {},
+    })
+
+    local roots = clearhead._testing["collect-workspace-roots"]({
+      current_file = loose .. "/scratch.txt",
+      cwd = loose,
+    })
+
+    local got = {}
+    for _, root in ipairs(roots) do
+      got[root.charters] = root.label
+    end
+
+    -- No project discovered, so the user workspace is the fallback default.
+    assert.are.equal("~", got[global .. "/charters"])
   end)
 
   it("should recognize charter markdown files", function()

@@ -188,21 +188,19 @@ local function current_picker_start(opts)
 	return opts.cwd or vim.fn.getcwd()
 end
 
---- Return list of { charters=path, label=scope } for global workspace,
---- all ancestor project workspaces from the current buffer/cwd, direct child
---- repos inside any enclosing higher-order project workspace, and any
---- configured additional_workspaces. Deduped.
+--- Return list of { charters=path, label=scope } for all ancestor project
+--- workspaces from the current buffer/cwd, direct child repos inside any
+--- enclosing higher-order project workspace, and any configured
+--- additional_workspaces. Deduped. When no project workspace is found from the
+--- current location, falls back to the global/user workspace (labelled "~").
+--- Inside a project that global workspace is excluded, so pickers stay
+--- project-scoped rather than always appending the user directory.
 local function collect_workspace_roots(opts)
 	opts = opts or {}
 	local roots = {}
 	local seen = {}
 	local project_roots = {}
 	local project_seen = {}
-
-	local data_dir = normalize_workspace_root(config.values.data_dir)
-	if data_dir then
-		add_workspace_root(roots, seen, data_dir, "~")
-	end
 
 	local starts = { current_picker_start(opts), opts.cwd or vim.fn.getcwd() }
 	local start_seen = {}
@@ -219,6 +217,16 @@ local function collect_workspace_roots(opts)
 
 	for _, path in ipairs(config.values.additional_workspaces or {}) do
 		add_workspace_root(roots, seen, path)
+	end
+
+	-- No project workspace discovered from where we are: fall back to the
+	-- global/user workspace as the default home base. This is a fallback, not an
+	-- unconditional member — inside any project the pickers stay project-scoped.
+	if #project_roots == 0 then
+		local data_dir = normalize_workspace_root(config.values.data_dir)
+		if data_dir then
+			add_workspace_root(roots, seen, data_dir, "~")
+		end
 	end
 
 	return roots
@@ -603,10 +611,7 @@ M.archive_saved = function(bufnr)
 	):wait()
 	if result.code ~= 0 then
 		local detail = vim.trim(result.stderr or "")
-		vim.notify(
-			"Archive on save failed" .. (detail ~= "" and ": " .. detail or "."),
-			vim.log.levels.ERROR
-		)
+		vim.notify("Archive on save failed" .. (detail ~= "" and ": " .. detail or "."), vim.log.levels.ERROR)
 		return
 	end
 
