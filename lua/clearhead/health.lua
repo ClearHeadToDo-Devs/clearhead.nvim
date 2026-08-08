@@ -2,7 +2,7 @@ local config = require("clearhead.config")
 
 local M = {}
 
-local check_neovim, check_cli, check_graphd, check_treesitter, check_config
+local check_neovim, check_cli, check_graphd, check_treesitter, check_config, check_modules
 
 -- =============================================================================
 -- Public API
@@ -10,6 +10,7 @@ local check_neovim, check_cli, check_graphd, check_treesitter, check_config
 
 M.check = function()
   check_neovim()
+  check_modules()
   check_cli()
   check_graphd()
   check_treesitter()
@@ -26,6 +27,23 @@ check_neovim = function()
     vim.health.ok("Neovim >= 0.10")
   else
     vim.health.error("Neovim >= 0.10 required", "Upgrade Neovim")
+  end
+end
+
+-- The feature modules are loaded lazily (required on first use), which means a
+-- broken module would otherwise stay silent until someone triggered its
+-- feature. Requiring each one here surfaces load/syntax errors up front.
+check_modules = function()
+  vim.health.start("clearhead: Modules")
+  -- The module set is derived from clearhead's lazy_exports, so this check can
+  -- never fall out of sync with what the plugin actually loads on demand.
+  for _, name in ipairs(require("clearhead")._feature_modules) do
+    local ok, err = pcall(require, name)
+    if ok then
+      vim.health.ok(name .. " loads")
+    else
+      vim.health.error(name .. " failed to load", tostring(err))
+    end
   end
 end
 

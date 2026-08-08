@@ -1,10 +1,9 @@
+-- config is the shared substrate: requiring it is inert (a defaults deepcopy,
+-- no disk, no CLI), so it stays a top-level require. The CLI-touching feature
+-- modules (actions/query/view/tree_view/graph_view/lsp) are pulled in lazily
+-- inside the functions that use them, so a missing binary only breaks its own
+-- feature instead of the whole plugin.
 local config = require("clearhead.config")
-local lsp = require("clearhead.lsp")
-local actions = require("clearhead.actions")
-local query = require("clearhead.query")
-local view = require("clearhead.view")
-local tree_view = require("clearhead.tree_view")
-local graph_view = require("clearhead.graph_view")
 
 local M = {}
 local bootstrap_done = false
@@ -17,25 +16,49 @@ local function ensure_config_loaded()
 	end
 end
 
-ensure_config_loaded()
+-- Re-export the feature APIs so callers only need require("clearhead"). Each
+-- entry maps a public name to { module, function }; the generated wrapper
+-- requires its module on first call rather than at load, so the module (and
+-- anything it shells out to) is only paid for when its feature is used.
+local lazy_exports = {
+	cycle_state = { "actions", "cycle_state" },
+	set_state = { "actions", "set_state" },
+	set_state_tree = { "actions", "set_state_tree" },
+	smart_new_action = { "actions", "smart_new_action" },
+	get_status = { "actions", "get_status" },
+	indent_action = { "actions", "indent_action" },
+	dedent_action = { "actions", "dedent_action" },
+	run_query = { "query", "run_query" },
+	open_view = { "view", "open" },
+	refresh_view = { "view", "refresh" },
+	act_on_entry = { "view", "act" },
+	open_tree = { "tree_view", "open" },
+	refresh_tree = { "tree_view", "refresh" },
+	open_graph = { "graph_view", "open" },
+	refresh_graph = { "graph_view", "refresh" },
+	preview_graph = { "graph_view", "preview" },
+}
 
--- Re-export the actions API so callers only need to require("clearhead").
-M.cycle_state = actions.cycle_state
-M.set_state = actions.set_state
-M.set_state_tree = actions.set_state_tree
-M.smart_new_action = actions.smart_new_action
-M.get_status = actions.get_status
-M.indent_action = actions.indent_action
-M.dedent_action = actions.dedent_action
-M.run_query = query.run_query
-M.open_view = view.open
-M.refresh_view = view.refresh
-M.act_on_entry = view.act
-M.open_tree = tree_view.open
-M.refresh_tree = tree_view.refresh
-M.open_graph = graph_view.open
-M.refresh_graph = graph_view.refresh
-M.preview_graph = graph_view.preview
+-- Both the wrappers and the distinct module set below are projections of the
+-- single lazy_exports table, so there is no second hand-kept list to drift.
+-- _feature_modules is consumed by the health check to load-test each module.
+M._feature_modules = {}
+local seen_module = {}
+for name, target in pairs(lazy_exports) do
+	local module_name, fn_name = target[1], target[2]
+	M[name] = function(...)
+		return require("clearhead." .. module_name)[fn_name](...)
+	end
+	local module_path = "clearhead." .. module_name
+	if not seen_module[module_path] then
+		seen_module[module_path] = true
+		M._feature_modules[#M._feature_modules + 1] = module_path
+	end
+end
+-- lsp is lazily required from _setup_actions_buffer rather than re-exported, so
+-- it isn't in lazy_exports — add it to the load-test set explicitly.
+M._feature_modules[#M._feature_modules + 1] = "clearhead.lsp"
+table.sort(M._feature_modules)
 
 -- ---------------------------------------------------------------------------
 -- Private helpers
@@ -431,6 +454,9 @@ M._plugin_init = function()
 	if bootstrap_done then
 		return
 	end
+	-- Entry point: guarantees defaults (and any config.json/env overlay) are
+	-- resolved even when the user never calls setup().
+	ensure_config_loaded()
 
 	local group = vim.api.nvim_create_augroup("clearhead", { clear = true })
 
@@ -545,8 +571,9 @@ M._setup_actions_buffer = function(bufnr)
 	if vim.b[bufnr].clearhead_actions_initialized then
 		return
 	end
+	ensure_config_loaded()
 
-	lsp.setup()
+	require("clearhead.lsp").setup()
 	vim.api.nvim_buf_call(bufnr, function()
 		vim.opt_local.autoread = true
 		vim.opt_local.conceallevel = 2
@@ -572,6 +599,7 @@ M._setup_markdown_buffer = function(bufnr)
 	if vim.b[bufnr].clearhead_markdown_initialized then
 		return
 	end
+	ensure_config_loaded()
 	if not config.values.nvim_default_mappings then
 		return
 	end
