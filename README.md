@@ -1,8 +1,6 @@
 # clearhead.nvim
 
-Neovim plugin for the [ClearHead](https://github.com/ClearHeadToDo-Devs/clearhead-cli)
-action management framework. Provides filetype support, LSP integration, and
-editor-native commands for working with `.actions` files.
+Neovim plugin for the [ClearHead](https://github.com/ClearHeadToDo-Devs/clearhead-cli) action management framework. Provides filetype support, LSP integration, and editor-native commands for working with `.actions` files.
 
 ## Requirements
 
@@ -12,8 +10,7 @@ editor-native commands for working with `.actions` files.
 - `clearhead-graphd` on `PATH` (or set `nvim_graphd_binary_path`) for query views
 - `clearhead` CLI for mutations such as complete, normalize, and archive
 
-During the extraction transition, the plugin can temporarily fall back to
-`clearhead start lsp` when the standalone server is unavailable.
+During the extraction transition, the plugin can temporarily fall back to `clearhead start lsp` when the standalone server is unavailable.
 
 ## Installation
 
@@ -38,21 +35,15 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 }
 ```
 
-The plugin works without calling `setup()`. Commands are registered from
-`plugin/`, and buffer-local behavior is applied from `ftplugin/`.
+The plugin works without calling `setup()`. Commands are registered from `plugin/`, and buffer-local behavior is applied from `ftplugin/`.
 
-Use `:ClearheadTree` for a graph-backed charter/action work map. The read-only
-view opens source files with `<CR>`, toggles branches with `<Space>`, and
-re-runs the tree query with `r`.
+Use `:ClearheadTree` for a graph-backed charter/action work map. The read-only view opens source files with `<CR>`, toggles branches with `<Space>`, and re-runs the tree query with `r`.
 
-Use `:ClearheadGraph` for the dependency network as an actual DOT buffer. Press
-`p` to render it to SVG through Graphviz, `r` to refresh, or edit/copy the DOT
-with the normal Neovim ecosystem.
+Use `:ClearheadGraph` for the dependency network as an actual DOT buffer. Press `p` to render it to SVG through Graphviz, `r` to refresh, or edit/copy the DOT with the normal Neovim ecosystem.
 
 ## Setup
 
-`setup()` is optional and only needed when you want Lua-side overrides in
-addition to the shared ClearHead config file and environment variables.
+`setup()` is optional and only needed when you want Lua-side overrides in addition to the shared ClearHead config file and environment variables.
 
 ```lua
 require("clearhead").setup({
@@ -75,17 +66,14 @@ require("clearhead").setup({
 
 ### Indentation and formatting
 
-`clearhead.nvim` formats through the ClearHead LSP, and the LSP formatter
-uses the current buffer indent options supplied by Neovim. To keep formatting
-predictable, the plugin sets buffer-local defaults for `.actions` files:
+`clearhead.nvim` formats through the ClearHead LSP, and the LSP formatter uses the current buffer indent options supplied by Neovim. To keep formatting predictable, the plugin sets buffer-local defaults for `.actions` files:
 
 - `expandtab = true`
 - `shiftwidth = 4`
 - `tabstop = 4`
 - `softtabstop = 4`
 
-You can override that behavior with `nvim_indent_style = "tabs"` or by
-changing `nvim_indent_width` in `setup()` or `config.json`.
+You can override that behavior with `nvim_indent_style = "tabs"` or by changing `nvim_indent_width` in `setup()` or `config.json`.
 
 ### Workspace discovery
 
@@ -96,32 +84,19 @@ The picker commands combine several sources:
 - direct child repos inside an enclosing higher-order project workspace
 - any `additional_workspaces` you configure explicitly
 
-Picker file discovery is recursive under `charters/`, so nested charter
-hierarchies are included instead of only top-level files.
+Picker file discovery is recursive under `charters/`, so nested charter hierarchies are included instead of only top-level files.
 
-For root-charter files like `charters/next.actions`, the picker shows the
-workspace/project name rather than the literal directory name `charters`.
+For root-charter files like `charters/next.actions`, the picker shows the workspace/project name rather than the literal directory name `charters`.
 
 ### Working directory
 
-The navigation commands (`:ClearheadInbox`, `:ClearheadWorkspace`,
-`:ClearheadProjectRoot`) and the pickers set the target window's working
-directory to the workspace root of what they open, so cwd-scoped tools
-(telescope, ripgrep, git) stay scoped to that workspace. Resolution follows the
-two-path rule: a project workspace roots at the project directory (the parent of
-its `.clearhead/`), while the user workspace (`data_dir`, which holds `charters/`
-directly, with no `.clearhead/` marker) roots at itself.
+The navigation commands (`:ClearheadInbox`, `:ClearheadWorkspace`, `:ClearheadProjectRoot`) and the pickers set the target window's working directory to the workspace root of what they open, so cwd-scoped tools (telescope, ripgrep, git) stay scoped to that workspace. Resolution follows the two-path rule: a project workspace roots at the project directory (the parent of its `.clearhead/`), while the user workspace (`data_dir`, which holds `charters/` directly, with no `.clearhead/` marker) roots at itself.
 
-`nvim_root_on_navigate` controls how: `"lcd"` (default, window-local — never
-disturbs other windows), `"tcd"` (tab-local), `"cd"` (global), or `false` to
-leave the working directory entirely alone. Even when disabled,
-`require("clearhead").workspace_root(path)` still exposes the resolver so you can
-wire your own cwd policy.
+`nvim_root_on_navigate` controls how: `"lcd"` (default, window-local — never disturbs other windows), `"tcd"` (tab-local), `"cd"` (global), or `false` to leave the working directory entirely alone. Even when disabled, `require("clearhead").workspace_root(path)` still exposes the resolver so you can wire your own cwd policy.
 
 ### Charter markdown mappings
 
-When you open a charter markdown file (`charters/*.md` or `charters/**/README.md`),
-charter-scoped mappings are available there too, including:
+When you open a charter markdown file (`charters/*.md` or `charters/**/README.md`), charter-scoped mappings are available there too, including:
 
 - `<localleader>A` archive current charter
 - `<localleader>C` close current charter
@@ -136,14 +111,11 @@ Full reference and tutorial in the built-in help:
 :help clearhead
 ```
 
-Covers setup, all keybindings, commands, LSP capabilities, the `.actions`
-format, workspace layout, daily workflow, archiving lifecycle, and the Lua API.
+Covers setup, all keybindings, commands, LSP capabilities, the `.actions` format, workspace layout, daily workflow, archiving lifecycle, and the Lua API.
 
 ## Development
 
-The test suite uses upstream [Busted](https://lunarmodules.github.io/busted/)
-inside Neovim through `nlua`; it does not depend on Plenary's retired test
-adapter. Install the Lua 5.1 test dependencies and run the suite with:
+The test suite uses upstream [Busted](https://lunarmodules.github.io/busted/) inside Neovim through `nlua`; it does not depend on Plenary's retired test adapter. Install the Lua 5.1 test dependencies and run the suite with:
 
 ```sh
 luarocks --lua-version=5.1 install --local busted 2.3.0-1
@@ -152,9 +124,7 @@ eval "$(luarocks --lua-version=5.1 path)"
 busted tests
 ```
 
-The living-loop integration test runs when both `clearhead` and
-`clearhead-graphd` are on `PATH`; otherwise Busted reports it as pending. To
-install the repository's pre-push gate:
+The living-loop integration test runs when both `clearhead` and `clearhead-graphd` are on `PATH`; otherwise Busted reports it as pending. To install the repository's pre-push gate:
 
 ```sh
 git config core.hooksPath .githooks
