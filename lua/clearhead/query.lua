@@ -3,18 +3,19 @@ local M = {}
 local config = require("clearhead.config")
 
 local function run_family(family, name, format, decode_json, callback)
-	local graphd = config.get_graphd_path()
-	if not graphd then
-		vim.notify("clearhead-graphd binary not found.", vim.log.levels.ERROR)
+	local clearhead = config.get_bin_path()
+	if not clearhead then
+		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
 		return
 	end
 
-	-- graphd is the public read/query tool. Give it Neovim's cwd as the
-	-- workspace hint so its core-backed loader performs the same ancestor
-	-- discovery a direct terminal invocation would. The buffer is deliberately
-	-- not involved: :cd/:lcd and autochdir define the active query workspace.
+	-- `clearhead query` is the public read tool; it evaluates in-process over
+	-- Core's canonical dataset. Run it from Neovim's cwd so its loader performs
+	-- the same ancestor discovery a direct terminal invocation would. The buffer
+	-- is deliberately not involved: :cd/:lcd and autochdir define the active
+	-- query workspace.
 	local cwd = vim.fn.getcwd()
-	local cmd = { graphd, "--workspace", cwd, "query", family }
+	local cmd = { clearhead, "query", family }
 	if name then
 		cmd[#cmd + 1] = name
 	end
@@ -42,7 +43,7 @@ local function run_family(family, name, format, decode_json, callback)
 			vim.schedule(function()
 				if exit_code ~= 0 then
 					local detail = table.concat(stderr, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
-					local message = "clearhead-graphd " .. family .. " query failed (exit " .. exit_code .. ")."
+					local message = "clearhead " .. family .. " query failed (exit " .. exit_code .. ")."
 					if detail ~= "" then
 						message = message .. "\n" .. detail
 					end

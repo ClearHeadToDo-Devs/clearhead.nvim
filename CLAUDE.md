@@ -47,4 +47,4 @@ eval "$(luarocks --lua-version=5.1 path)"
 busted tests
 ```
 
-The living-loop integration spec runs when `clearhead` and `clearhead-graphd` are on `PATH`; otherwise it is explicitly reported as pending. CI and `.githooks/pre-push` run the same suite.
+The living-loop integration spec runs when `clearhead` is on `PATH`; otherwise it is explicitly reported as pending. CI and `.githooks/pre-push` run the same suite.

@@ -22,7 +22,7 @@ local function display(node)
 	return text
 end
 
---- Project graphd's nested tree contract into display lines and their nodes.
+--- Project the nested tree contract into display lines and their nodes.
 M.render = function(tree, collapsed)
 	collapsed = collapsed or {}
 	local lines = {}

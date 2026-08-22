@@ -7,8 +7,8 @@ end
 
 describe("living loop", function()
 	it("reads, mutates by id, and re-reads an archived completion", function()
-		if vim.fn.executable("clearhead") == 0 or vim.fn.executable("clearhead-graphd") == 0 then
-			pending("clearhead and clearhead-graphd are not both available on PATH")
+		if vim.fn.executable("clearhead") == 0 then
+			pending("clearhead is not available on PATH")
 			return
 		end
 

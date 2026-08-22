@@ -9,7 +9,6 @@ describe("clearhead", function()
 		assert.are.same({}, ctx.config.additional_workspaces)
 		assert.are.equal("spaces", ctx.config.nvim_indent_style)
 		assert.are.equal(4, ctx.config.nvim_indent_width)
-		assert.are.equal("", ctx.config.nvim_graphd_binary_path)
 		assert.is_false(ctx.config.nvim_archive_on_save)
 		assert.are.equal("lcd", ctx.config.nvim_root_on_navigate)
 	end)
@@ -191,23 +190,6 @@ describe("clearhead", function()
 		-- One resolver backs both the public API and the CLI-subprocess cwd, so the
 		-- editor and the CLI can never disagree on where the workspace root is.
 		assert.are.equal(userws, clearhead.workspace_root(userws .. "/charters/inbox.actions"))
-	end)
-
-	it("resolves an explicit standalone graphd binary", function()
-		local config = require("clearhead.config")
-		local old_executable = vim.fn.executable
-		local old_values = vim.deepcopy(config.values)
-
-		config.values.nvim_graphd_binary_path = "/opt/clearhead/bin/clearhead-graphd"
-		vim.fn.executable = function(path)
-			return path == "/opt/clearhead/bin/clearhead-graphd" and 1 or 0
-		end
-
-		local graphd = config.get_graphd_path()
-		vim.fn.executable = old_executable
-		config.values = old_values
-
-		assert.are.equal("/opt/clearhead/bin/clearhead-graphd", graphd)
 	end)
 
 	it("configures the standalone clearhead-lsp command directly", function()

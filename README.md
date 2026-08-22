@@ -7,8 +7,7 @@ Neovim plugin for the [ClearHead](https://github.com/ClearHeadToDo-Devs/clearhea
 - Neovim 0.10+
 - `nvim-treesitter` with the `actions` grammar installed
 - `clearhead-lsp` on `PATH` (or set `nvim_lsp_binary_path`) for document intelligence
-- `clearhead-graphd` on `PATH` (or set `nvim_graphd_binary_path`) for query views
-- `clearhead` CLI for mutations such as complete, normalize, and archive
+- `clearhead` CLI for query views and mutations such as complete, normalize, and archive
 
 During the extraction transition, the plugin can temporarily fall back to `clearhead start lsp` when the standalone server is unavailable.
 
@@ -55,7 +54,6 @@ require("clearhead").setup({
   nvim_archive_on_save  = false,     -- move terminal actions after each save
   nvim_lsp_enable       = true,      -- auto-attach clearhead-lsp
   nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
-  nvim_graphd_binary_path = "",      -- explicit clearhead-graphd path (auto-detected)
   nvim_inbox_file       = "",        -- override inbox path
   nvim_default_mappings = true,      -- enable <localleader> keybindings
   nvim_indent_style     = "spaces", -- buffer-local indent style for .actions
@@ -124,7 +122,7 @@ eval "$(luarocks --lua-version=5.1 path)"
 busted tests
 ```
 
-The living-loop integration test runs when both `clearhead` and `clearhead-graphd` are on `PATH`; otherwise Busted reports it as pending. To install the repository's pre-push gate:
+The living-loop integration test runs when `clearhead` is on `PATH`; otherwise Busted reports it as pending. To install the repository's pre-push gate:
 
 ```sh
 git config core.hooksPath .githooks
