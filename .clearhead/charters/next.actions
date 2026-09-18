@@ -2,3 +2,7 @@
 [ ] add quick add view $im thinking a floating window where people can put the main line and any subtasks even before finally adding the structure incline to the inbox$ !2 #01a0adcc-110a-7450-b5d3-b6c6f043c2c6
 [ ] add priority switch hotkey $it should let you choose between 1-5 and just use the treesitter structure to do it$ #01a0add5-a1e4-7c60-90b9-ed1acd3903af
 [ ] add tree view $im imagining something close to a file browser but instead of listng actions we would list charters and their specific actions so that you can easily see the charters which are prose next to actions which are lines of text all with a mediud where we can change the work easily and get our work done properly$ #01a0b278-f496-7a91-a14d-4450e3355f3a
+[ ] add charter functionality #01a0b284-5f76-7492-ba5a-520b95b49379
+    >[ ] determine when we are looking at charter/objective markdown files $we dont want to do something where we are actually adding a bunch of hotkeys to generic markdown files so we need to do some kid of check or trigger$ #01a0b284-5f76-7492-ba5a-5227e0f6ec56
+    >[ ] add charter init command $allows us to create a new charter in the current place$ #01a0b285-16f3-7451-8a79-40206d87f14c
+    >[ ] add charter id hotkey $or something like actions where the LSP itself just adds an id if it doesnt exist already and doing a quick check$ #01a0b285-16f3-7451-8a79-40487ee14f88
