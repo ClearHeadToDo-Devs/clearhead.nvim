@@ -63,6 +63,7 @@ Install with any plugin manager. Example using lazy.nvim: >lua
     ft = { "actions", "markdown" },
     cmd = {
       "ClearheadInbox",
+      "ClearheadQuickAdd",
       "ClearheadWorkspace",
       "ClearheadProjectRoot",
       "ClearheadDiff",
@@ -607,6 +608,7 @@ File operations ~
 Navigation ~
 
   `<localleader>i`   Open inbox
+  `<localleader>q`   Quick-add an indented action outline to the inbox
   `<localleader>p`   Open workspace data directory (netrw / oil.nvim / etc.)
   `<localleader>P`   Walk up to nearest `.clearhead/`, open `next.actions`
   `<localleader>s`   Picker: active action files across all visible workspaces
@@ -621,6 +623,17 @@ These commands are always available regardless of the current filetype.
 :ClearheadInbox
     Open the inbox in the current window.
     Equivalent to `<localleader>i`.
+
+                                                    *:ClearheadQuickAdd*
+:ClearheadQuickAdd
+    Open a floating scratch outline for rapid capture. Write the root action
+    as plain text and indent each subtask beneath its parent. Optional `-`,
+    `*`, or `+` Markdown bullets and blank lines are ignored. Press `<C-s>`
+    in normal or insert mode to append the generated action tree to the inbox;
+    press `q` or `<Esc>` in normal mode to cancel. Input indentation uses
+    `nvim_indent_width`; generated action indentation also honors
+    `nvim_indent_style`. Equivalent to `<localleader>q` in action and charter
+    buffers.
 
                                                     *:ClearheadWorkspace*
 :ClearheadWorkspace
@@ -964,6 +977,13 @@ current window.
 `get_conform_opts()`
     Returns the conform.nvim formatter table for the `actions` filetype.
     See |clearhead-conform|.
+
+                                                *clearhead.open_quick_add()*
+`open_quick_add()`
+    Open the floating quick-add outline behind |:ClearheadQuickAdd|. On
+    `<C-s>`, converts indentation into action depth and appends the resulting
+    not-started action tree to the configured inbox. Refuses to write over a
+    loaded inbox with unsaved changes.
 
                                                    *clearhead.open_inbox()*
 `open_inbox(winnr)`

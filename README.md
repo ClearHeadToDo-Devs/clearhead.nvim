@@ -21,6 +21,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
   ft = { "actions", "markdown" },
   cmd = {
     "ClearheadInbox",
+    "ClearheadQuickAdd",
     "ClearheadWorkspace",
     "ClearheadProjectRoot",
     "ClearheadDiff",
@@ -35,6 +36,8 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 ```
 
 The plugin works without calling `setup()`. Commands are registered from `plugin/`, and buffer-local behavior is applied from `ftplugin/`.
+
+Use `:ClearheadQuickAdd` for a floating capture outline. Enter a root action, indent any subtasks, and press `<C-s>` to append the whole structure to the inbox. Blank lines and optional Markdown bullets are ignored.
 
 Use `:ClearheadTree` for a graph-backed charter/action work map. The read-only view opens source files with `<CR>`, toggles branches with `<Space>`, and re-runs the tree query with `r`.
 
@@ -99,6 +102,7 @@ When you open a charter markdown file (`charters/*.md` or `charters/**/README.md
 - `<localleader>A` archive current charter
 - `<localleader>C` close current charter
 - `<localleader>s` / `<localleader>S` open the charter pickers
+- `<localleader>q` quick-add an indented action outline to the inbox
 - `<localleader>p` / `<localleader>P` workspace navigation
 
 ## Documentation

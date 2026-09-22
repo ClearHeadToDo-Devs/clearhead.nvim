@@ -37,6 +37,7 @@ local lazy_exports = {
 	open_graph = { "graph_view", "open" },
 	refresh_graph = { "graph_view", "refresh" },
 	preview_graph = { "graph_view", "preview" },
+	open_quick_add = { "quick_add", "open" },
 }
 
 -- Both the wrappers and the distinct module set below are projections of the
@@ -387,6 +388,7 @@ local function set_charter_mappings(bufnr)
 	map("<localleader>i", function()
 		M.open_inbox(0)
 	end, "Open inbox")
+	map("<localleader>q", M.open_quick_add, "Quick-add actions to inbox")
 	map("<localleader>p", function()
 		M.open_workspace(0)
 	end, "Browse workspace")
@@ -529,6 +531,7 @@ M._plugin_init = function()
 	create_command("ClearheadInbox", function()
 		M.open_inbox(0)
 	end)
+	create_command("ClearheadQuickAdd", M.open_quick_add)
 	create_command("ClearheadWorkspace", function()
 		M.open_workspace(0)
 	end)
