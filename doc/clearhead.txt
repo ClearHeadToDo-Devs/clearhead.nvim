@@ -818,6 +818,7 @@ Diagnostic codes ~
   W004  missing creation date
   W010  duplicate alias
   W011  ambiguous short UUID reference
+  W014  decision heading in an action description (link to DECISIONS.md)
 
                                                        *clearhead-lsp-local*
 Operations that bypass the LSP (tree-sitter, no roundtrip) ~
