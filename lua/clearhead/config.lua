@@ -3,7 +3,7 @@ local M = {}
 local DEFAULTS = {
 	data_dir = "",
 	config_dir = "",
-	default_file = "inbox.actions",
+	default_file = "next.actions",
 	additional_workspaces = {},
 	nvim_auto_normalize = true,
 	nvim_format_on_save = true,
@@ -24,6 +24,22 @@ local expand_path = function(path)
 end
 
 M.expand_path = expand_path
+
+--- The file quick-add and :ClearheadInbox target. `nvim_inbox_file` is an
+--- nvim-only override (it leaves the CLI's shared `default_file` alone);
+--- otherwise `default_file` resolves from the user workspace's charters/
+--- directory, or is used as-is when absolute (configuration.md).
+M.capture_path = function()
+	local v = M.values
+	if v.nvim_inbox_file and v.nvim_inbox_file ~= "" then
+		return expand_path(v.nvim_inbox_file)
+	end
+	local file = expand_path(v.default_file)
+	if vim.startswith(file, "/") then
+		return file
+	end
+	return expand_path(v.data_dir) .. "/charters/" .. file
+end
 
 local function get_default_config_dir()
 	local xdg = os.getenv("XDG_CONFIG_HOME")

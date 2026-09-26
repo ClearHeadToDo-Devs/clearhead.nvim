@@ -37,7 +37,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 The plugin works without calling `setup()`. Commands are registered from `plugin/`, and buffer-local behavior is applied from `ftplugin/`.
 
-Use `:ClearheadQuickAdd` for a floating capture outline. Enter a root action, indent any subtasks, and press `<C-s>` to append the whole structure to the inbox. Blank lines and optional Markdown bullets are ignored.
+Use `:ClearheadQuickAdd` for a floating capture outline. Enter a root action, indent any subtasks, and press `<C-s>` to append the whole structure to the default capture file (the root charter's `charters/next.actions`, or `nvim_inbox_file` if set). Blank lines and optional Markdown bullets are ignored.
 
 Use `:ClearheadTree` for a graph-backed charter/action work map. The read-only view opens source files with `<CR>`, toggles branches with `<Space>`, and re-runs the tree query with `r`.
 
@@ -50,14 +50,14 @@ Use `:ClearheadGraph` for the dependency network as an actual DOT buffer. Press 
 ```lua
 require("clearhead").setup({
   -- all options are optional; these are the defaults
-  default_file          = "inbox.actions",
+  default_file          = "next.actions", -- relative to charters/
   additional_workspaces = {},        -- extra workspace roots to surface in pickers/LSP
   nvim_auto_normalize   = true,      -- assign missing UUIDs on save
   nvim_format_on_save   = true,      -- format via LSP on BufWritePre
   nvim_archive_on_save  = false,     -- move terminal actions after each save
   nvim_lsp_enable       = true,      -- auto-attach clearhead-lsp
   nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
-  nvim_inbox_file       = "",        -- override inbox path
+  nvim_inbox_file       = "",        -- nvim-only capture path override
   nvim_default_mappings = true,      -- enable <localleader> keybindings
   nvim_indent_style     = "spaces", -- buffer-local indent style for .actions
   nvim_indent_width     = 4,         -- buffer-local indent width for .actions
@@ -102,7 +102,7 @@ When you open a charter markdown file (`charters/*.md` or `charters/**/README.md
 - `<localleader>A` archive current charter
 - `<localleader>C` close current charter
 - `<localleader>s` / `<localleader>S` open the charter pickers
-- `<localleader>q` quick-add an indented action outline to the inbox
+- `<localleader>q` quick-add an indented action outline to the default capture file
 - `<localleader>p` / `<localleader>P` workspace navigation
 
 ## Documentation

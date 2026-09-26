@@ -67,19 +67,12 @@ M.compile = function(lines, width)
 	return result
 end
 
-local function inbox_path()
-	if config.values.nvim_inbox_file and config.values.nvim_inbox_file ~= "" then
-		return config.expand_path(config.values.nvim_inbox_file)
-	end
-	return config.expand_path(config.values.data_dir) .. "/charters/" .. config.values.default_file
-end
-
----Append lines without overwriting an unsaved inbox buffer.
+---Append lines without overwriting an unsaved buffer of the target file.
 M.append = function(path, lines)
 	local bufnr = vim.fn.bufnr(path)
 	if bufnr > 0 and vim.api.nvim_buf_is_loaded(bufnr) then
 		if vim.bo[bufnr].modified then
-			return nil, "save the modified inbox before quick-adding"
+			return nil, "save the modified " .. vim.fn.fnamemodify(path, ":t") .. " before quick-adding"
 		end
 		vim.api.nvim_buf_set_lines(bufnr, -1, -1, false, lines)
 		local ok, err = pcall(vim.api.nvim_buf_call, bufnr, function()
@@ -114,7 +107,7 @@ local function submit(bufnr)
 		return
 	end
 
-	local path = inbox_path()
+	local path = config.capture_path()
 	local ok, append_error = M.append(path, compiled)
 	if not ok then
 		vim.notify("clearhead quick add: " .. append_error, vim.log.levels.ERROR)
@@ -163,7 +156,7 @@ M.open = function()
 	local map_opts = { buffer = bufnr, silent = true }
 	vim.keymap.set({ "n", "i" }, "<C-s>", function()
 		submit(bufnr)
-	end, vim.tbl_extend("force", map_opts, { desc = "Save quick actions to inbox" }))
+	end, vim.tbl_extend("force", map_opts, { desc = "Save quick actions to the capture file" }))
 	vim.keymap.set("n", "q", close_window, vim.tbl_extend("force", map_opts, { desc = "Cancel quick add" }))
 	vim.keymap.set("n", "<Esc>", close_window, map_opts)
 	vim.cmd("startinsert")

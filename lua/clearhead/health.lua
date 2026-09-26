@@ -86,7 +86,7 @@ check_config = function()
 
   local cfg = clearhead._testing["load-config-internal"]().config
 
-  -- data_dir — required for LSP root and inbox
+  -- data_dir — required for LSP root and the default capture file (charters/next.actions)
   vim.health.info("data_dir: " .. (cfg.data_dir ~= "" and cfg.data_dir or "(not set)"))
   if cfg.data_dir ~= "" and vim.fn.isdirectory(cfg.data_dir) == 1 then
     vim.health.ok("data_dir exists")

@@ -5,12 +5,30 @@ describe("clearhead", function()
 
 	it("should load default configuration", function()
 		local ctx = clearhead._testing["load-config-internal"]()
-		assert.are.equal("inbox.actions", ctx.config.default_file)
+		assert.are.equal("next.actions", ctx.config.default_file)
 		assert.are.same({}, ctx.config.additional_workspaces)
 		assert.are.equal("spaces", ctx.config.nvim_indent_style)
 		assert.are.equal(4, ctx.config.nvim_indent_width)
 		assert.is_false(ctx.config.nvim_archive_on_save)
 		assert.are.equal("lcd", ctx.config.nvim_root_on_navigate)
+	end)
+
+	it("resolves the capture file from charters/, an absolute default_file, or the nvim override", function()
+		local config = require("clearhead.config")
+		local saved = config.values
+		config.values = vim.tbl_extend("force", saved, {
+			data_dir = "/ws",
+			default_file = "next.actions",
+			nvim_inbox_file = "",
+		})
+		assert.are.equal("/ws/charters/next.actions", config.capture_path())
+
+		config.values.default_file = "/elsewhere/capture.actions"
+		assert.are.equal("/elsewhere/capture.actions", config.capture_path())
+
+		config.values.nvim_inbox_file = "/custom/inbox.actions"
+		assert.are.equal("/custom/inbox.actions", config.capture_path())
+		config.values = saved
 	end)
 
 	it("should allow indentation defaults to be overridden", function()

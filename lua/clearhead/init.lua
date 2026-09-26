@@ -387,8 +387,8 @@ local function set_charter_mappings(bufnr)
 	map("<localleader>C", M.close_charter, "Close current charter")
 	map("<localleader>i", function()
 		M.open_inbox(0)
-	end, "Open inbox")
-	map("<localleader>q", M.open_quick_add, "Quick-add actions to inbox")
+	end, "Open default capture file")
+	map("<localleader>q", M.open_quick_add, "Quick-add actions to the capture file")
 	map("<localleader>p", function()
 		M.open_workspace(0)
 	end, "Browse workspace")
@@ -848,19 +848,15 @@ end
 -- Navigation
 -- ---------------------------------------------------------------------------
 
---- Open the inbox file in the given window.
+--- Open the default capture file (see config.capture_path) in the given window.
+--- The name predates the root charter becoming the default target.
 --- winnr: window handle (0 = current window)
 M.open_inbox = function(winnr)
-	local path, root
-	if config.values.nvim_inbox_file and config.values.nvim_inbox_file ~= "" then
-		path = config.expand_path(config.values.nvim_inbox_file)
-		-- A custom inbox may live inside a project; root to its workspace.
-		root = workspace_cwd_for_path(path)
-	else
-		-- The default inbox is the user workspace: data_dir is the root directly.
-		root = config.expand_path(config.values.data_dir)
-		path = root .. "/charters/" .. config.values.default_file
-	end
+	local path = config.capture_path()
+	local data_dir = config.expand_path(config.values.data_dir)
+	-- The user workspace roots at data_dir itself; an override may live inside a
+	-- project, so root to that file's workspace instead.
+	local root = vim.startswith(path, data_dir .. "/charters/") and data_dir or workspace_cwd_for_path(path)
 	open_file_in_win(winnr, path)
 	set_window_cwd(winnr, root)
 end
@@ -898,7 +894,7 @@ M.open_project_root = function(winnr)
 		dir = parent
 	end
 
-	vim.notify("No .clearhead/ directory found, opening inbox instead.", vim.log.levels.WARN)
+	vim.notify("No .clearhead/ directory found, opening the default capture file instead.", vim.log.levels.WARN)
 	M.open_inbox(winnr)
 end
 

@@ -96,7 +96,7 @@ All keys are optional; defaults shown below. >lua
     -- Core (shared with CLI via ~/.config/clearhead/config.json)
     data_dir              = "",    -- workspace root (XDG default)
     config_dir            = "",    -- config directory (XDG default)
-    default_file          = "inbox.actions",
+    default_file          = "next.actions", -- relative to charters/
     additional_workspaces = {},      -- extra workspace roots for pickers/LSP
 
     -- Neovim-specific
@@ -105,7 +105,7 @@ All keys are optional; defaults shown below. >lua
     nvim_archive_on_save  = false,     -- move terminal actions after save
     nvim_lsp_enable       = true,      -- auto-start clearhead-lsp
     nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
-    nvim_inbox_file       = "",        -- override inbox path
+    nvim_inbox_file       = "",        -- nvim-only capture path override
     nvim_default_mappings = true,      -- enable <localleader> keybindings
     nvim_indent_style     = "spaces", -- buffer-local indent style
     nvim_indent_width     = 4,         -- buffer-local indent width
@@ -174,14 +174,15 @@ finished charter. If you want a specific topic jump directly to its section.
 ------------------------------------------------------------------------------
 5.1 FIRST CAPTURE                                      *clearhead-tut-capture*
 
-Open the inbox in the current window: >vim
+Open the default capture file in the current window: >vim
 
   :ClearheadInbox
 <
 Or from any `.actions` buffer: `<localleader>i`
 
-The inbox lives at `data_dir/charters/inbox.actions`. It is the default
-landing zone for anything that has not been sorted into a charter yet.
+By default this is the root charter's `data_dir/charters/next.actions`
+(`default_file`, resolved from `charters/`). It is the landing zone for
+anything that has not been sorted into a charter yet.
 
 Write your first action — just a state and a name: >
 
@@ -342,7 +343,7 @@ The LSP surfaces a warning if they are completed out of order: >
 A typical day with clearhead.nvim looks like this:
 
 1. CAPTURE
-   Jump to the inbox with `<localleader>i` (or `:ClearheadInbox`) and
+   Jump to the capture file with `<localleader>i` (or `:ClearheadInbox`) and
    dump everything you need to do. Don't worry about organisation yet.
    One action per line; state is `[ ]`. Save; UUIDs are assigned. >
 
@@ -353,7 +354,7 @@ A typical day with clearhead.nvim looks like this:
 
 2. TRIAGE
    Open the picker with `<localleader>s` to jump to the charter where
-   each item belongs, or use `<localleader>i` to stay in the inbox.
+   each item belongs, or use `<localleader>i` to stay in the capture file.
 
    Set priorities with `!` fields. Add `@` do-dates where helpful.
    Use `<localleader><space>` to cycle states as you triage:
@@ -395,7 +396,7 @@ Workspace layout ~
   ~/.local/share/clearhead/
   ├── archive/                 ← archived charter/action plaintext
   ├── charters/
-  │   ├── inbox.actions        ← uncategorised captures
+  │   ├── next.actions         ← root charter; uncategorised captures
   │   ├── work.actions         ← a flat charter
   │   ├── health.actions
   │   ├── financial/           ← directory-form charter
@@ -416,7 +417,7 @@ Each charter can also have:
 
 Navigation ~
 
-  `<localleader>i`   Open inbox
+  `<localleader>i`   Open the default capture file
   `<localleader>s`   Picker over all active action files
   `<localleader>S`   Picker over all markdown charter documents
   `<localleader>p`   Open workspace data directory (netrw / oil.nvim / etc.)
@@ -488,7 +489,7 @@ or >vim
 <
 The plugin walks upward from the current file's directory until it finds
 `.clearhead/`, then opens `charters/next.actions`. If none is found, it
-falls back to the global inbox.
+falls back to the default capture file.
 
 The `<localleader>s` / `<localleader>S` pickers include the global
 workspace, any ancestor project workspaces discovered from the current
@@ -607,8 +608,8 @@ File operations ~
 
 Navigation ~
 
-  `<localleader>i`   Open inbox
-  `<localleader>q`   Quick-add an indented action outline to the inbox
+  `<localleader>i`   Open the default capture file
+  `<localleader>q`   Quick-add an indented action outline to the capture file
   `<localleader>p`   Open workspace data directory (netrw / oil.nvim / etc.)
   `<localleader>P`   Walk up to nearest `.clearhead/`, open `next.actions`
   `<localleader>s`   Picker: active action files across all visible workspaces
@@ -621,7 +622,8 @@ These commands are always available regardless of the current filetype.
 
                                                        *:ClearheadInbox*
 :ClearheadInbox
-    Open the inbox in the current window.
+    Open the default capture file in the current window. The name predates
+    the root charter's `next.actions` becoming the default target.
     Equivalent to `<localleader>i`.
 
                                                     *:ClearheadQuickAdd*
@@ -629,7 +631,7 @@ These commands are always available regardless of the current filetype.
     Open a floating scratch outline for rapid capture. Write the root action
     as plain text and indent each subtask beneath its parent. Optional `-`,
     `*`, or `+` Markdown bullets and blank lines are ignored. Press `<C-s>`
-    in normal or insert mode to append the generated action tree to the inbox;
+    in normal or insert mode to append the generated action tree to the capture file;
     press `q` or `<Esc>` in normal mode to cancel. Input indentation uses
     `nvim_indent_width`; generated action indentation also honors
     `nvim_indent_style`. Equivalent to `<localleader>q` in action and charter
@@ -983,13 +985,14 @@ current window.
 `open_quick_add()`
     Open the floating quick-add outline behind |:ClearheadQuickAdd|. On
     `<C-s>`, converts indentation into action depth and appends the resulting
-    not-started action tree to the configured inbox. Refuses to write over a
-    loaded inbox with unsaved changes.
+    not-started action tree to the capture file. Refuses to write over a
+    loaded capture file with unsaved changes.
 
                                                    *clearhead.open_inbox()*
 `open_inbox(winnr)`
-    Open the inbox file in window `winnr`. Uses `nvim_inbox_file` if set,
-    otherwise `data_dir/charters/<default_file>`.
+    Open the default capture file in window `winnr`. Uses `nvim_inbox_file`
+    if set, otherwise `default_file` resolved from `data_dir/charters/`
+    (used as-is when absolute).
 
                                                *clearhead.open_workspace()*
 `open_workspace(winnr)`

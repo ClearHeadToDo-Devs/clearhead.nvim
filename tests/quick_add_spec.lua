@@ -46,9 +46,9 @@ describe("quick add", function()
 		assert.matches("skips an action depth", skipped)
 	end)
 
-	it("appends captures to an unloaded inbox", function()
+	it("appends captures to an unloaded capture file", function()
 		local tmp = vim.fn.tempname()
-		local path = tmp .. "/charters/inbox.actions"
+		local path = tmp .. "/charters/next.actions"
 		vim.fn.mkdir(tmp .. "/charters", "p")
 		vim.fn.writefile({ "[ ] Existing" }, path)
 
@@ -57,9 +57,9 @@ describe("quick add", function()
 		assert.are.same({ "[ ] Existing", "[ ] Parent", "  >[ ] Child" }, vim.fn.readfile(path))
 	end)
 
-	it("refuses to overwrite a modified loaded inbox", function()
+	it("refuses to overwrite a modified loaded capture file", function()
 		local tmp = vim.fn.tempname()
-		local path = tmp .. "/inbox.actions"
+		local path = tmp .. "/next.actions"
 		vim.fn.mkdir(tmp, "p")
 		vim.fn.writefile({ "[ ] Existing" }, path)
 		local bufnr = vim.fn.bufadd(path)
@@ -68,7 +68,7 @@ describe("quick add", function()
 
 		local ok, err = quick_add.append(path, { "[ ] New" })
 		assert.is_nil(ok)
-		assert.matches("save the modified inbox", err)
+		assert.matches("save the modified next.actions", err)
 		assert.are.same({ "[ ] Existing" }, vim.fn.readfile(path))
 		vim.api.nvim_buf_delete(bufnr, { force = true })
 	end)
