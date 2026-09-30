@@ -1,6 +1,8 @@
 :Clearhead	clearhead.txt	/*:Clearhead*
 :Clearhead-add	clearhead.txt	/*:Clearhead-add*
 :Clearhead-archive	clearhead.txt	/*:Clearhead-archive*
+:Clearhead-debug	clearhead.txt	/*:Clearhead-debug*
+:Clearhead-jot	clearhead.txt	/*:Clearhead-jot*
 :Clearhead-open	clearhead.txt	/*:Clearhead-open*
 :Clearhead-pick	clearhead.txt	/*:Clearhead-pick*
 :Clearhead-query	clearhead.txt	/*:Clearhead-query*
@@ -31,6 +33,7 @@ clearhead-tut-projects	clearhead.txt	/*clearhead-tut-projects*
 clearhead-tut-workflow	clearhead.txt	/*clearhead-tut-workflow*
 clearhead-tutorial	clearhead.txt	/*clearhead-tutorial*
 clearhead.act_on_entry()	clearhead.txt	/*clearhead.act_on_entry()*
+clearhead.action_id_under_cursor()	clearhead.txt	/*clearhead.action_id_under_cursor()*
 clearhead.archive()	clearhead.txt	/*clearhead.archive()*
 clearhead.archive_charter()	clearhead.txt	/*clearhead.archive_charter()*
 clearhead.archive_workspace()	clearhead.txt	/*clearhead.archive_workspace()*
@@ -40,7 +43,9 @@ clearhead.format()	clearhead.txt	/*clearhead.format()*
 clearhead.get_conform_opts()	clearhead.txt	/*clearhead.get_conform_opts()*
 clearhead.get_status()	clearhead.txt	/*clearhead.get_status()*
 clearhead.indent_action()	clearhead.txt	/*clearhead.indent_action()*
+clearhead.jot()	clearhead.txt	/*clearhead.jot()*
 clearhead.normalize()	clearhead.txt	/*clearhead.normalize()*
+clearhead.open_cli_output()	clearhead.txt	/*clearhead.open_cli_output()*
 clearhead.open_graph()	clearhead.txt	/*clearhead.open_graph()*
 clearhead.open_inbox()	clearhead.txt	/*clearhead.open_inbox()*
 clearhead.open_project_root()	clearhead.txt	/*clearhead.open_project_root()*

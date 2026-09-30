@@ -82,16 +82,17 @@ local function cli_json(args)
 	return ok and type(doc) == "table" and doc or nil
 end
 
---- Names of the available views of one family ("index" | "tree" | "graph"),
---- built-in and saved, straight from `clearhead query list` so completion
---- cannot drift.
+--- Names of the available views, built-in and saved, straight from
+--- `clearhead query list` so completion cannot drift. `family` ("index" |
+--- "tree" | "graph") narrows to one family; nil returns every name.
 M.names = function(family)
-	local names = {}
+	local seen = {}
 	for _, row in ipairs(cli_json({ "query", "list" }) or {}) do
-		if row.type == family then
-			names[#names + 1] = row.name
+		if family == nil or row.type == family then
+			seen[row.name] = true
 		end
 	end
+	local names = vim.tbl_keys(seen)
 	table.sort(names)
 	return names
 end

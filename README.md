@@ -29,6 +29,8 @@ Use `:Clearhead add action` for a floating capture outline. Enter a root action,
 
 Use `:Clearhead query tree` for a graph-backed charter/action work map. The read-only view opens source files with `<CR>`, toggles branches with `<Space>`, and re-runs the tree query with `r`.
 
+Use `:Clearhead jot <text>` to record a timestamped line in the current charter's log, and `:Clearhead debug` to see which workspace the CLI resolved and why.
+
 Use `:Clearhead query graph` for the dependency network as an actual DOT buffer. Press `p` to render it to SVG through Graphviz, `r` to refresh, or edit/copy the DOT with the normal Neovim ecosystem.
 
 ## Setup

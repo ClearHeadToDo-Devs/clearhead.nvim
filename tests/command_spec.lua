@@ -176,13 +176,89 @@ describe("clearhead.command", function()
 			end)
 		end)
 
+		describe("query show", function()
+			local ch = require("clearhead")
+			local query = require("clearhead.query")
+
+			it("opens the view's SPARQL and completes every view name", function()
+				local saved_open, saved_names = ch.open_cli_output, query.names
+				local args, filetype
+				ch.open_cli_output = function(a, ft)
+					args, filetype = a, ft
+				end
+				query.names = function(family)
+					assert.is_nil(family)
+					return { "agenda", "open-actions", "work-map" }
+				end
+				command.run({ "query", "show", "agenda" })
+				local got = command.complete(command.tree, "a", "Clearhead query show a")
+				ch.open_cli_output, query.names = saved_open, saved_names
+
+				assert.are.same({ "query", "show", "agenda" }, args)
+				assert.are.equal("sparql", filetype)
+				assert.are.same({ "agenda" }, got)
+			end)
+		end)
+
+		describe("jot", function()
+			local ch = require("clearhead")
+			local saved_jot, saved_input, jotted
+
+			before_each(function()
+				saved_jot, saved_input = ch.jot, vim.ui.input
+				jotted = {}
+				ch.jot = function(text, opts)
+					jotted[#jotted + 1] = { text, opts.charter }
+				end
+			end)
+
+			after_each(function()
+				ch.jot, vim.ui.input = saved_jot, saved_input
+			end)
+
+			it("joins the words into the text and lifts --charter out from anywhere", function()
+				command.run({ "jot", "found", "a", "bug" })
+				command.run({ "jot", "--charter", "work", "found", "it" })
+				command.run({ "jot", "found", "it", "--charter", "work" })
+				assert.are.same({ { "found a bug" }, { "found it", "work" }, { "found it", "work" } }, jotted)
+			end)
+
+			it("prompts when given no text, and drops an empty answer", function()
+				local answers = { "from the prompt", "   " }
+				vim.ui.input = function(_, on_confirm)
+					on_confirm(table.remove(answers, 1))
+				end
+				command.run({ "jot", "--charter", "work" })
+				command.run({ "jot" })
+				assert.are.same({ { "from the prompt", "work" } }, jotted)
+			end)
+
+			it("completes the flag once, then charter aliases", function()
+				local query = require("clearhead.query")
+				local saved = query.charters
+				query.charters = function()
+					return { "home", "work" }
+				end
+				local flag = command.complete(command.tree, "--", "Clearhead jot --")
+				local aliases = command.complete(command.tree, "w", "Clearhead jot --charter w")
+				local after = command.complete(command.tree, "", "Clearhead jot --charter work ")
+				query.charters = saved
+				assert.are.same({ "--charter" }, flag)
+				assert.are.same({ "work" }, aliases)
+				assert.are.same({}, after)
+			end)
+		end)
+
 		it("mirrors the CLI verbs it shares", function()
 			assert.is_not_nil(command.tree.add.action)
 			assert.is_not_nil(command.tree.archive.charter)
 			assert.is_not_nil(command.tree.query.index)
 			assert.is_not_nil(command.tree.query.tree)
 			assert.is_not_nil(command.tree.query.graph)
+			assert.is_not_nil(command.tree.query.chain)
+			assert.is_not_nil(command.tree.query.show)
 			assert.is_not_nil(command.tree.debug)
+			assert.is_not_nil(command.tree.jot)
 		end)
 	end)
 end)

@@ -614,7 +614,7 @@ These commands are always available regardless of the current filetype.
 :Clearhead {verb} {noun} [args]
     The single entry point. The grammar is verb then noun, mirroring the
     `clearhead` CLI wherever a verb exists there (`add`, `archive`, `debug`,
-    `query`);
+    `jot`, `query`);
     `open` and `pick` are editor-only. Every level tab-completes.
 
     Verb      Noun        Does
@@ -625,6 +625,8 @@ These commands are always available regardless of the current filetype.
     `pick`    `actions`   |:Clearhead-pick|
     `pick`    `charters`  |:Clearhead-pick|
     `archive` `charter`   |:Clearhead-archive|
+    `query`   `show`      |:Clearhead-query|
+    `jot`                 |:Clearhead-jot|
     `debug`               |:Clearhead-debug|
     `query`   `index`     |:Clearhead-query|
     `query`   `chain`     |:Clearhead-query|
@@ -677,6 +679,16 @@ These commands are always available regardless of the current filetype.
     Archive all charters whose frontmatter carries `state: Closed` in
     a single pass (`clearhead archive charter --closed`). Equivalent to
     `require("clearhead").archive_workspace()`.
+
+                                                      *:Clearhead-jot*
+:Clearhead jot [--charter {charter}] {text}
+    Record a timestamped line in a charter's `## Log`, like `clearhead jot`.
+    The charter is `--charter` (completes aliases), else the charter of the
+    current buffer when it is a charter file, else the CLI's default (the
+    sole charter when unambiguous). With no {text} it prompts, so the bare
+    command can be bound to a key. The CLI's reply, which names the charter
+    it wrote to, is shown; an open buffer for that charter reloads. Refuses
+    while the current charter document has unsaved changes.
 
                                                     *:Clearhead-debug*
 :Clearhead debug
@@ -736,6 +748,11 @@ These commands are always available regardless of the current filetype.
     name; it defaults to the action under the cursor — a clearhead quickfix
     entry, or the `#id` of the action on the current line of an actions
     buffer. Refresh keeps the target.
+
+:Clearhead query show {name}
+    Open the SPARQL behind any view (built-in or saved, any family) in a
+    read-only scratch split, like `clearhead query show {name}`. `r`
+    re-reads it, `q` closes it.
 
 :Clearhead query tree [name]
     Run a named tree-family query and render its validated hierarchy in a
@@ -957,6 +974,12 @@ current window.
     When `bufnr` points to a `.completed.actions` file the function redirects
     to `archive charter --file <filename>` (see |clearhead.archive_charter()|)
     and closes the moved buffer only after success.
+
+                                                       *clearhead.jot()*
+`jot({text}, {opts})`
+    Jot `text` into a charter's log; the Lua entry point behind
+    |:Clearhead-jot|. `opts.charter` (string|nil) names the charter; nil
+    uses the current buffer's charter, then the CLI's default.
 
                                            *clearhead.archive_charter()*
 `archive_charter([{opts}])`

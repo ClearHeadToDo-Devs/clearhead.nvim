@@ -72,6 +72,54 @@ local chain = {
 	end,
 }
 
+--- `query show <name>`: the view's SPARQL in a read-only split.
+local show = {
+	run = function(args)
+		local name = first(args)
+		if not name then
+			vim.notify("Clearhead: query show needs a view name", vim.log.levels.ERROR)
+			return
+		end
+		ch().open_cli_output({ "query", "show", name }, "sparql")
+	end,
+	complete = function(lead, rest)
+		return #rest > 0 and {} or starting_with(lead, require("clearhead.query").names())
+	end,
+}
+
+--- `jot [--charter <charter>] <text...>`: a timestamped line in a charter's
+--- log. `--charter` may sit anywhere; the other words are the text. With no
+--- text it prompts, so the bare command can be bound to a key.
+local jot = {
+	run = function(args)
+		local words, charter = {}, nil
+		local i = 1
+		while i <= #args do
+			if args[i] == "--charter" then
+				charter, i = args[i + 1], i + 2
+			else
+				words[#words + 1], i = args[i], i + 1
+			end
+		end
+		local function send(text)
+			if text and vim.trim(text) ~= "" then
+				ch().jot(text, { charter = charter })
+			end
+		end
+		if #words > 0 then
+			send(table.concat(words, " "))
+		else
+			vim.ui.input({ prompt = "Jot: " }, send)
+		end
+	end,
+	complete = function(lead, rest)
+		if rest[#rest] == "--charter" then
+			return starting_with(lead, require("clearhead.query").charters())
+		end
+		return vim.tbl_contains(rest, "--charter") and {} or starting_with(lead, { "--charter" })
+	end,
+}
+
 M.tree = {
 	add = {
 		action = {
@@ -116,6 +164,7 @@ M.tree = {
 			end,
 		},
 	},
+	jot = jot,
 	debug = {
 		run = function()
 			ch().open_cli_output({ "debug" })
@@ -124,6 +173,7 @@ M.tree = {
 	query = {
 		index = index,
 		chain = chain,
+		show = show,
 		tree = view("tree", function(name)
 			ch().open_tree(name)
 		end),
