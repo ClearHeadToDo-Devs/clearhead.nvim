@@ -683,9 +683,12 @@ These commands are always available regardless of the current filetype.
     Run a named index query and render the results as the quickfix list.
     Each entry jumps to the action in its source file (`<CR>`, |:cnext|,
     etc.); the entry's `user_data` carries the action's canonical id, the
-    stable address mutation verbs act on. The list title is
-    `clearhead: {name}` and the list context records the query name so a
-    refresh can re-run the same query. An empty result renders an empty
+    stable address mutation verbs act on. The list title is the literal
+    command plus the workspace it ran in, e.g.
+    `clearhead query index agenda  (platform)`, and the list context records
+    the full argv so a refresh re-runs exactly what was asked. A refresh
+    runs from the current |:cd|, so after changing directory it queries the
+    new workspace and the title says so. An empty result renders an empty
     list — an empty agenda is an answer, not an error.
 
     [name] is the stem of a `.sparql` file saved under:
@@ -1008,13 +1011,17 @@ current window.
     Falls back to |clearhead.open_inbox()| if none is found.
 
                                                   *clearhead.run_query()*
-`run_query({name}, {callback})`
-    Run a named index query and pass the parsed rows to `callback(rows)`.
-    Shells out directly to `clearhead query index [name]` asynchronously and
+`run_query({spec}, {callback})`
+    Run an index query and pass the parsed rows to `callback(rows)`.
+    Shells out directly to `clearhead query {spec...}` asynchronously and
     requests the index JSON-LD contract explicitly.
 
-    `name` (string|nil) — named query variant, e.g. `"agenda"`. Pass `nil`
-    for the default (all open actions with source locations).
+    `spec` (string|string[]|nil) — a named view, e.g. `"agenda"`, which is
+    shorthand for `{ "index", "agenda" }`; `nil` is the default view (all
+    open actions with source locations). A list is the argv after
+    `clearhead query`, for views that take arguments, e.g.
+    `{ "index", "agenda", "--charter", "nvim-subcommands" }`. The plugin
+    supplies `--format` itself.
 
     `callback` (function) — called with a list of row tables on success.
     Each row contains at minimum: >
@@ -1074,16 +1081,16 @@ current window.
     through `vim.ui.open()`.
 
                                                   *clearhead.open_view()*
-`open_view({name})`
-    Run a named index query and render it as the quickfix list — the Lua
+`open_view({spec})`
+    Run an index query and render it as the quickfix list — the Lua
     entry point behind |:Clearhead-query|. Each row maps to one entry:
     `charter_root/source_file` and `source_line` become the jump target,
     the composed `name [status] due:…` becomes the display text, and the
     canonical `id` goes into the entry's `user_data` as the stable address
     for mutation verbs.
 
-    `name` (string|nil) — named query variant, e.g. `"agenda"`. Pass `nil`
-    for the default.
+    `spec` (string|string[]|nil) — a view name or argv list, as in
+    |clearhead.run_query()|.
 
                                                *clearhead.refresh_view()*
 `refresh_view()`

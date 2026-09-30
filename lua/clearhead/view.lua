@@ -3,11 +3,30 @@ local M = {}
 local config = require("clearhead.config")
 local query = require("clearhead.query")
 
---- Name of the query behind the current quickfix list, or nil if the list
---- is not a clearhead view.
-local function current_view_name()
+--- CLI argv (after `clearhead query`) behind the current quickfix list, or
+--- nil if the list is not a clearhead view.
+local function current_view_args()
 	local ctx = vim.fn.getqflist({ context = 1 }).context
 	return type(ctx) == "table" and ctx.clearhead_query or nil
+end
+
+--- The literal command plus the workspace it ran in, so a refresh after
+--- `:cd` that shows different rows also shows why.
+local function title(args)
+	local cwd = vim.fn.getcwd()
+	local workspace = vim.fs.root(cwd, ".clearhead") or cwd
+	return ("clearhead query %s  (%s)"):format(table.concat(args, " "), vim.fs.basename(workspace))
+end
+
+--- Build (" ") or replace ("r") the quickfix list from `rows`. The context
+--- records the full argv, not just a view name, so a refresh re-runs exactly
+--- what was asked (`--charter`, a chain target) from the current cwd.
+local function set_list(action, args, rows)
+	vim.fn.setqflist({}, action, {
+		title = title(args),
+		context = { clearhead_query = args },
+		items = vim.tbl_map(M.to_qf_entry, rows),
+	})
 end
 
 --- Map one index-contract row to a quickfix entry.
@@ -26,18 +45,13 @@ M.to_qf_entry = function(row)
 	}
 end
 
---- Run a named index query and render it as the quickfix list.
---- An empty result still renders (an empty agenda is an answer, not an
---- error). The list context records the query name so a refresh can
---- re-run the same query and rebuild in place.
-M.open = function(name)
-	name = name or "default"
-	query.run_query(name, function(rows)
-		vim.fn.setqflist({}, " ", {
-			title = "clearhead: " .. name,
-			context = { clearhead_query = name },
-			items = vim.tbl_map(M.to_qf_entry, rows),
-		})
+--- Run an index view and render it as the quickfix list. `spec` is a view
+--- name or the argv after `clearhead query` (see query.index_args). An empty
+--- result still renders (an empty agenda is an answer, not an error).
+M.open = function(spec)
+	local args = query.index_args(spec)
+	query.run_query(args, function(rows)
+		set_list(" ", args, rows)
 		vim.cmd("copen")
 	end)
 end
@@ -46,19 +60,15 @@ end
 --- the re-read half of the loop. The re-settle keeps the user's place: same
 --- row index, clamped to the new list length.
 M.refresh = function()
-	local name = current_view_name()
-	if not name then
+	local args = current_view_args()
+	if not args then
 		vim.notify("clearhead: current quickfix list is not a clearhead view.", vim.log.levels.WARN)
 		return
 	end
 	local qf_win = vim.fn.getqflist({ winid = 1 }).winid
 	local row = qf_win ~= 0 and vim.api.nvim_win_get_cursor(qf_win)[1] or 1
-	query.run_query(name, function(rows)
-		vim.fn.setqflist({}, "r", {
-			title = "clearhead: " .. name,
-			context = { clearhead_query = name },
-			items = vim.tbl_map(M.to_qf_entry, rows),
-		})
+	query.run_query(args, function(rows)
+		set_list("r", args, rows)
 		if qf_win ~= 0 and #rows > 0 then
 			vim.api.nvim_win_set_cursor(qf_win, { math.min(row, #rows), 0 })
 		end
@@ -71,8 +81,7 @@ end
 --- that node. Save-gated: the CLI mutates the file on disk, so a modified
 --- buffer for the entry's file aborts rather than diverge from it.
 M.act = function(verb)
-	local name = current_view_name()
-	if not name then
+	if not current_view_args() then
 		vim.notify("clearhead: current quickfix list is not a clearhead view.", vim.log.levels.WARN)
 		return
 	end

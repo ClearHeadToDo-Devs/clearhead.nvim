@@ -36,3 +36,45 @@ describe("quickfix view projection", function()
 		assert.are.equal(7, entry.lnum)
 	end)
 end)
+
+describe("quickfix view refresh", function()
+	local query = require("clearhead.query")
+	local original_run_query
+	local calls
+
+	before_each(function()
+		calls = {}
+		original_run_query = query.run_query
+		---@diagnostic disable-next-line: duplicate-set-field
+		query.run_query = function(args, callback)
+			calls[#calls + 1] = args
+			callback({})
+		end
+	end)
+
+	after_each(function()
+		query.run_query = original_run_query
+		vim.cmd("cclose")
+	end)
+
+	it("re-runs the full CLI argv, not just the view name", function()
+		local args = { "index", "agenda", "--charter", "nvim-subcommands" }
+		view.open(args)
+		view.refresh()
+
+		assert.are.same({ args, args }, calls)
+		local title = vim.fn.getqflist({ title = 1 }).title
+		assert.is_truthy(title:find("clearhead query index agenda --charter nvim-subcommands", 1, true))
+	end)
+
+	it("treats a bare name as shorthand for an index view", function()
+		view.open("agenda")
+		assert.are.same({ { "index", "agenda" } }, calls)
+	end)
+
+	it("names the workspace the query ran in", function()
+		view.open(nil)
+		local title = vim.fn.getqflist({ title = 1 }).title
+		assert.is_truthy(title:find("(" .. vim.fs.basename(vim.fn.getcwd()) .. ")", 1, true))
+	end)
+end)
