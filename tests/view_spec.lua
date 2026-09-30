@@ -39,11 +39,18 @@ end)
 
 describe("quickfix view refresh", function()
 	local query = require("clearhead.query")
-	local original_run_query
+	local original_run_query, original_workspace
 	local calls
+	local workspace
 
 	before_each(function()
 		calls = {}
+		workspace = { workspace_name = "proofws", resolution = "cwd-walk" }
+		original_workspace = query.workspace
+		---@diagnostic disable-next-line: duplicate-set-field
+		query.workspace = function()
+			return workspace
+		end
 		original_run_query = query.run_query
 		---@diagnostic disable-next-line: duplicate-set-field
 		query.run_query = function(args, callback)
@@ -54,6 +61,7 @@ describe("quickfix view refresh", function()
 
 	after_each(function()
 		query.run_query = original_run_query
+		query.workspace = original_workspace
 		vim.cmd("cclose")
 	end)
 
@@ -72,9 +80,22 @@ describe("quickfix view refresh", function()
 		assert.are.same({ { "index", "agenda" } }, calls)
 	end)
 
-	it("names the workspace the query ran in", function()
-		view.open(nil)
-		local title = vim.fn.getqflist({ title = 1 }).title
-		assert.is_truthy(title:find("(" .. vim.fs.basename(vim.fn.getcwd()) .. ")", 1, true))
+	local function title_of(spec)
+		view.open(spec)
+		return vim.fn.getqflist({ title = 1 }).title
+	end
+
+	it("names the workspace the CLI resolved", function()
+		assert.are.equal("clearhead query index  (proofws)", title_of(nil))
+	end)
+
+	it("calls out a resolution other than the cwd walk", function()
+		workspace.resolution = "xdg-default"
+		assert.are.equal("clearhead query index agenda  (proofws, xdg-default)", title_of("agenda"))
+	end)
+
+	it("falls back to the cwd's name when the CLI cannot say", function()
+		workspace = nil
+		assert.are.equal("clearhead query index  (" .. vim.fs.basename(vim.fn.getcwd()) .. ")", title_of(nil))
 	end)
 end)

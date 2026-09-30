@@ -10,12 +10,17 @@ local function current_view_args()
 	return type(ctx) == "table" and ctx.clearhead_query or nil
 end
 
---- The literal command plus the workspace it ran in, so a refresh after
---- `:cd` that shows different rows also shows why.
+--- The literal command plus the workspace the CLI resolved for it, so a
+--- refresh after `:cd` that shows different rows also shows why. The name
+--- comes from `clearhead debug`; a resolution other than the cwd walk (the
+--- user-workspace fallback) is called out, since it is the surprising case.
 local function title(args)
-	local cwd = vim.fn.getcwd()
-	local workspace = vim.fs.root(cwd, ".clearhead") or cwd
-	return ("clearhead query %s  (%s)"):format(table.concat(args, " "), vim.fs.basename(workspace))
+	local workspace = query.workspace() or {}
+	local name = workspace.workspace_name or vim.fs.basename(vim.fn.getcwd())
+	if workspace.resolution and workspace.resolution ~= "cwd-walk" then
+		name = name .. ", " .. workspace.resolution
+	end
+	return ("clearhead query %s  (%s)"):format(table.concat(args, " "), name)
 end
 
 --- Build (" ") or replace ("r") the quickfix list from `rows`. The context

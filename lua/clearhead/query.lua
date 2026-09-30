@@ -64,46 +64,42 @@ local function run(args, format, decode_json, callback)
 	})
 end
 
---- Parse the box-drawn table of `clearhead query list` into
---- `{ { name, type, source } }`. The CLI has no machine format for this yet,
---- so a layout change degrades to "no completions", never an error.
-M.parse_list = function(text)
-	local rows = {}
-	for line in vim.gsplit(text or "", "\n", { plain = true }) do
-		local cells = vim.split(line, "┆", { plain = true })
-		if vim.startswith(line, "│") and #cells == 3 then
-			local function cell(s)
-				return vim.trim((s:gsub("│", "")))
-			end
-			local name = cell(cells[1])
-			if name ~= "NAME" then
-				rows[#rows + 1] = { name = name, type = cell(cells[2]), source = cell(cells[3]) }
-			end
-		end
+--- Run `clearhead <args...>` synchronously from the cwd and decode its piped
+--- JSON (nulls become nil). Returns nil when the binary is missing, the
+--- command fails, or the output is not JSON — e.g. a CLI that predates piped
+--- JSON for this command — so callers degrade instead of erroring. Only for
+--- commands that take a few milliseconds.
+local function cli_json(args)
+	local bin = config.get_bin_path()
+	if not bin then
+		return nil
 	end
-	return rows
+	local done = vim.system(vim.list_extend({ bin }, args), { cwd = vim.fn.getcwd(), text = true }):wait(2000)
+	if done.code ~= 0 then
+		return nil
+	end
+	local ok, doc = pcall(vim.json.decode, done.stdout or "", { luanil = { object = true, array = true } })
+	return ok and type(doc) == "table" and doc or nil
 end
 
 --- Names of the available views of one family ("index" | "tree" | "graph"),
---- built-in and saved, straight from the CLI so completion cannot drift.
---- Synchronous: `query list` is a few milliseconds.
+--- built-in and saved, straight from `clearhead query list` so completion
+--- cannot drift.
 M.names = function(family)
-	local bin = config.get_bin_path()
-	if not bin then
-		return {}
-	end
-	local done = vim.system({ bin, "query", "list" }, { cwd = vim.fn.getcwd(), text = true }):wait(2000)
-	if done.code ~= 0 then
-		return {}
-	end
 	local names = {}
-	for _, row in ipairs(M.parse_list(done.stdout)) do
+	for _, row in ipairs(cli_json({ "query", "list" }) or {}) do
 		if row.type == family then
 			names[#names + 1] = row.name
 		end
 	end
 	table.sort(names)
 	return names
+end
+
+--- The workspace the CLI resolves from the cwd, per `clearhead debug`
+--- (`workspace_name`, `resolution`, `resolved_data_root`, ...), or nil.
+M.workspace = function()
+	return (cli_json({ "debug" }) or {}).workspace
 end
 
 --- Normalize an index view spec to the argv after `clearhead query`: a list
@@ -120,16 +116,7 @@ end
 --- completion. Charters without an alias are skipped: titles carry spaces,
 --- which a command-line word cannot.
 M.charters = function()
-	local bin = config.get_bin_path()
-	if not bin then
-		return {}
-	end
-	local done = vim.system({ bin, "read", "charters", "--format", "json" }, { cwd = vim.fn.getcwd(), text = true })
-		:wait(2000)
-	local ok, doc = pcall(vim.json.decode, done.stdout or "")
-	if done.code ~= 0 or not ok or type(doc) ~= "table" then
-		return {}
-	end
+	local doc = cli_json({ "read", "charters", "--format", "json" }) or {}
 	local aliases = {}
 	for _, charter in ipairs(doc.charters or {}) do
 		if type(charter.alias) == "string" then

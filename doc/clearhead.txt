@@ -697,11 +697,13 @@ These commands are always available regardless of the current filetype.
     Each entry jumps to the action in its source file (`<CR>`, |:cnext|,
     etc.); the entry's `user_data` carries the action's canonical id, the
     stable address mutation verbs act on. The list title is the literal
-    command plus the workspace it ran in, e.g.
-    `clearhead query index agenda  (platform)`, and the list context records
-    the full argv so a refresh re-runs exactly what was asked. A refresh
-    runs from the current |:cd|, so after changing directory it queries the
-    new workspace and the title says so. An empty result renders an empty
+    command plus the workspace the CLI resolved for it (from
+    `clearhead debug`), e.g. `clearhead query index agenda  (platform)`;
+    when the CLI fell back past the cwd walk the title says how, e.g.
+    `(clearhead, xdg-default)`. The list context records the full argv so a
+    refresh re-runs exactly what was asked. A refresh runs from the current
+    |:cd|, so after changing directory it queries the new workspace and the
+    title says so. An empty result renders an empty
     list — an empty agenda is an answer, not an error.
 
     [name] is the stem of a `.sparql` file saved under:
