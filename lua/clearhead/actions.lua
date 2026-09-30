@@ -10,14 +10,24 @@ local STATE_QUERY = [[((state [
 
 local state_cycle = { " ", "-", "=", "x", "_" }
 
+--- The parsed root of an actions buffer, or nil when the actions parser is not
+--- installed. Neovim 0.12 returns nil for a missing parser where earlier
+--- versions threw, so both are handled.
+local function actions_root(bufnr)
+	local ok, parser = pcall(vim.treesitter.get_parser, bufnr, "actions")
+	if not ok or not parser then
+		return nil
+	end
+	return parser:parse()[1]:root()
+end
+
 --- Returns the state value node (e.g. state_completed) on the given 0-indexed line,
 --- or nil if none found.
 local function get_action_state_node(bufnr, linenr)
-	local ok = pcall(vim.treesitter.get_parser, bufnr, "actions")
-	if not ok then
+	local root = actions_root(bufnr)
+	if not root then
 		return nil
 	end
-	local root = vim.treesitter.get_parser(bufnr, "actions"):parse()[1]:root()
 	local query = vim.treesitter.query.parse("actions", STATE_QUERY)
 	local found = nil
 	for _, node in query:iter_captures(root, bufnr, linenr, linenr + 1) do
@@ -39,11 +49,10 @@ end
 --- Returns the enclosing root_action or depth{N}_action node for the given
 --- 0-indexed line, or nil if the cursor is not inside an action.
 local function get_enclosing_action_node(bufnr, linenr)
-	local ok = pcall(vim.treesitter.get_parser, bufnr, "actions")
-	if not ok then
+	local root = actions_root(bufnr)
+	if not root then
 		return nil
 	end
-	local root = vim.treesitter.get_parser(bufnr, "actions"):parse()[1]:root()
 	-- Anchor on the line's first non-blank character (the `[` or depth marker).
 	-- A whole-line range (col -1 reads as "past the end") is not contained by
 	-- an action that ends on this line, so the lookup would climb to its parent.
@@ -137,11 +146,10 @@ M.set_state_tree = function(bufnr, linenr, state)
 		return
 	end
 
-	local ok = pcall(vim.treesitter.get_parser, bufnr, "actions")
-	if not ok then
+	local root = actions_root(bufnr)
+	if not root then
 		return
 	end
-	local root = vim.treesitter.get_parser(bufnr, "actions"):parse()[1]:root()
 
 	-- The action node's range spans the entire subtree (parent + all children).
 	local srow, _, erow, _ = action_node:range()
@@ -166,8 +174,8 @@ end
 --- bufnr: buffer number (0 = current)
 --- linenr: 0-indexed line number
 M.smart_new_action = function(bufnr, linenr)
-	local root = vim.treesitter.get_parser(bufnr, "actions"):parse()[1]:root()
-	local node = root:named_descendant_for_range(linenr, 0, linenr, -1)
+	local root = actions_root(bufnr)
+	local node = root and root:named_descendant_for_range(linenr, 0, linenr, -1)
 
 	local depth_markers = ""
 	local current = node
@@ -233,12 +241,11 @@ end
 --- Return a summary string like "✓ 2/5" for the given buffer, or "" if no actions.
 --- bufnr: buffer number (0 = current)
 M.get_status = function(bufnr)
-	local ok = pcall(vim.treesitter.get_parser, bufnr, "actions")
-	if not ok then
+	local root = actions_root(bufnr)
+	if not root then
 		return ""
 	end
 
-	local root = vim.treesitter.get_parser(bufnr, "actions"):parse()[1]:root()
 	local query = vim.treesitter.query.parse("actions", STATE_QUERY)
 	local total, completed = 0, 0
 

@@ -20,8 +20,10 @@ describe("actions resolve the action on the cursor line", function()
 		vim.cmd("bwipeout!")
 	end)
 
+	-- Neovim 0.12 returns nil for a missing parser instead of throwing.
 	local function parser_available()
-		return pcall(vim.treesitter.language.add, "actions") and pcall(vim.treesitter.get_parser, 0, "actions")
+		local ok, parser = pcall(vim.treesitter.get_parser, 0, "actions")
+		return ok and parser ~= nil
 	end
 
 	local function id_on(line)
