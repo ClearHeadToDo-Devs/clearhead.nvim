@@ -66,6 +66,48 @@ local function run_family(family, name, format, decode_json, callback)
 	})
 end
 
+--- Parse the box-drawn table of `clearhead query list` into
+--- `{ { name, type, source } }`. The CLI has no machine format for this yet,
+--- so a layout change degrades to "no completions", never an error.
+M.parse_list = function(text)
+	local rows = {}
+	for line in vim.gsplit(text or "", "\n", { plain = true }) do
+		local cells = vim.split(line, "┆", { plain = true })
+		if vim.startswith(line, "│") and #cells == 3 then
+			local function cell(s)
+				return vim.trim((s:gsub("│", "")))
+			end
+			local name = cell(cells[1])
+			if name ~= "NAME" then
+				rows[#rows + 1] = { name = name, type = cell(cells[2]), source = cell(cells[3]) }
+			end
+		end
+	end
+	return rows
+end
+
+--- Names of the available views of one family ("index" | "tree" | "graph"),
+--- built-in and saved, straight from the CLI so completion cannot drift.
+--- Synchronous: `query list` is a few milliseconds.
+M.names = function(family)
+	local bin = config.get_bin_path()
+	if not bin then
+		return {}
+	end
+	local done = vim.system({ bin, "query", "list" }, { cwd = vim.fn.getcwd(), text = true }):wait(2000)
+	if done.code ~= 0 then
+		return {}
+	end
+	local names = {}
+	for _, row in ipairs(M.parse_list(done.stdout)) do
+		if row.type == family then
+			names[#names + 1] = row.name
+		end
+	end
+	table.sort(names)
+	return names
+end
+
 --- Run a named index query and pass its validated rows to callback(rows).
 --- The index family's machine default is NDJSON; request JSON-LD explicitly
 --- because this client consumes its semantic @graph framing.

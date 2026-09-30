@@ -19,29 +19,17 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 {
   "ClearHeadToDo-Devs/clearhead.nvim",
   ft = { "actions", "markdown" },
-  cmd = {
-    "ClearheadInbox",
-    "ClearheadQuickAdd",
-    "ClearheadWorkspace",
-    "ClearheadProjectRoot",
-    "ClearheadDiff",
-    "ClearheadArchiveWorkspace",
-    "ClearheadPickActions",
-    "ClearheadPickCharters",
-    "ClearheadQuery",
-    "ClearheadTree",
-    "ClearheadGraph",
-  },
+  cmd = "Clearhead",
 }
 ```
 
 The plugin works without calling `setup()`. Commands are registered from `plugin/`, and buffer-local behavior is applied from `ftplugin/`.
 
-Use `:ClearheadQuickAdd` for a floating capture outline. Enter a root action, indent any subtasks, and press `<C-s>` to append the whole structure to the default capture file (the root charter's `charters/next.actions`, or `nvim_inbox_file` if set). Blank lines and optional Markdown bullets are ignored.
+Use `:Clearhead add action` for a floating capture outline. Enter a root action, indent any subtasks, and press `<C-s>` to append the whole structure to the default capture file (the root charter's `charters/next.actions`, or `nvim_inbox_file` if set). Blank lines and optional Markdown bullets are ignored.
 
-Use `:ClearheadTree` for a graph-backed charter/action work map. The read-only view opens source files with `<CR>`, toggles branches with `<Space>`, and re-runs the tree query with `r`.
+Use `:Clearhead query tree` for a graph-backed charter/action work map. The read-only view opens source files with `<CR>`, toggles branches with `<Space>`, and re-runs the tree query with `r`.
 
-Use `:ClearheadGraph` for the dependency network as an actual DOT buffer. Press `p` to render it to SVG through Graphviz, `r` to refresh, or edit/copy the DOT with the normal Neovim ecosystem.
+Use `:Clearhead query graph` for the dependency network as an actual DOT buffer. Press `p` to render it to SVG through Graphviz, `r` to refresh, or edit/copy the DOT with the normal Neovim ecosystem.
 
 ## Setup
 
@@ -91,7 +79,7 @@ For root-charter files like `charters/next.actions`, the picker shows the worksp
 
 ### Working directory
 
-The navigation commands (`:ClearheadInbox`, `:ClearheadWorkspace`, `:ClearheadProjectRoot`) and the pickers set the target window's working directory to the workspace root of what they open, so cwd-scoped tools (telescope, ripgrep, git) stay scoped to that workspace. Resolution follows the two-path rule: a project workspace roots at the project directory (the parent of its `.clearhead/`), while the user workspace (`data_dir`, which holds `charters/` directly, with no `.clearhead/` marker) roots at itself.
+The navigation commands (`:Clearhead open root|project|workspace`) and the pickers set the target window's working directory to the workspace root of what they open, so cwd-scoped tools (telescope, ripgrep, git) stay scoped to that workspace. Resolution follows the two-path rule: a project workspace roots at the project directory (the parent of its `.clearhead/`), while the user workspace (`data_dir`, which holds `charters/` directly, with no `.clearhead/` marker) roots at itself.
 
 `nvim_root_on_navigate` controls how: `"lcd"` (default, window-local — never disturbs other windows), `"tcd"` (tab-local), `"cd"` (global), or `false` to leave the working directory entirely alone. Even when disabled, `require("clearhead").workspace_root(path)` still exposes the resolver so you can wire your own cwd policy.
 

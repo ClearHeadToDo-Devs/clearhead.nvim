@@ -522,49 +522,7 @@ M._plugin_init = function()
 		end,
 	})
 
-	local function create_command(name, fn)
-		if vim.fn.exists(":" .. name) == 0 then
-			vim.api.nvim_create_user_command(name, fn, {})
-		end
-	end
-
-	create_command("ClearheadInbox", function()
-		M.open_inbox(0)
-	end)
-	create_command("ClearheadQuickAdd", M.open_quick_add)
-	create_command("ClearheadWorkspace", function()
-		M.open_workspace(0)
-	end)
-	create_command("ClearheadProjectRoot", function()
-		M.open_project_root(0)
-	end)
-	create_command("ClearheadDiff", function()
-		vim.cmd("vertical diffsplit %")
-	end)
-	create_command("ClearheadArchiveWorkspace", function()
-		M.archive_workspace()
-	end)
-	create_command("ClearheadPickActions", function()
-		M.pick_action_file()
-	end)
-	create_command("ClearheadPickCharters", function()
-		M.pick_charter_doc()
-	end)
-	if vim.fn.exists(":ClearheadQuery") == 0 then
-		vim.api.nvim_create_user_command("ClearheadQuery", function(args)
-			M.open_view(args.args ~= "" and args.args or nil)
-		end, { nargs = "?" })
-	end
-	if vim.fn.exists(":ClearheadTree") == 0 then
-		vim.api.nvim_create_user_command("ClearheadTree", function(args)
-			M.open_tree(args.args ~= "" and args.args or nil)
-		end, { nargs = "?" })
-	end
-	if vim.fn.exists(":ClearheadGraph") == 0 then
-		vim.api.nvim_create_user_command("ClearheadGraph", function(args)
-			M.open_graph(args.args ~= "" and args.args or nil)
-		end, { nargs = "?" })
-	end
+	require("clearhead.command").register()
 
 	bootstrap_done = true
 end

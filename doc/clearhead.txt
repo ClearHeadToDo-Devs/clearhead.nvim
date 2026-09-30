@@ -61,17 +61,7 @@ Install with any plugin manager. Example using lazy.nvim: >lua
   {
     "ClearHeadToDo-Devs/clearhead.nvim",
     ft = { "actions", "markdown" },
-    cmd = {
-      "ClearheadInbox",
-      "ClearheadQuickAdd",
-      "ClearheadWorkspace",
-      "ClearheadProjectRoot",
-      "ClearheadDiff",
-      "ClearheadArchiveWorkspace",
-      "ClearheadPickActions",
-      "ClearheadPickCharters",
-      "ClearheadQuery",
-    },
+    cmd = "Clearhead",
   }
 <
 The plugin works without calling `setup()`. Commands are registered from
@@ -176,7 +166,7 @@ finished charter. If you want a specific topic jump directly to its section.
 
 Open the default capture file in the current window: >vim
 
-  :ClearheadInbox
+  :Clearhead open root
 <
 Or from any `.actions` buffer: `<localleader>i`
 
@@ -343,7 +333,7 @@ The LSP surfaces a warning if they are completed out of order: >
 A typical day with clearhead.nvim looks like this:
 
 1. CAPTURE
-   Jump to the capture file with `<localleader>i` (or `:ClearheadInbox`) and
+   Jump to the capture file with `<localleader>i` (or `:Clearhead open root`) and
    dump everything you need to do. Don't worry about organisation yet.
    One action per line; state is `[ ]`. Save; UUIDs are assigned. >
 
@@ -485,7 +475,7 @@ Open the project root from any buffer inside the project: >vim
 <
 or >vim
 
-  :ClearheadProjectRoot
+  :Clearhead open project
 <
 The plugin walks upward from the current file's directory until it finds
 `.clearhead/`, then opens `charters/next.actions`. If none is found, it
@@ -548,7 +538,7 @@ This requires two steps:
 
 To archive all closed charters in one pass: >vim
 
-  :ClearheadArchiveWorkspace
+  :Clearhead archive charter
 <
 Pressing `<localleader>a` from a `.completed.actions` buffer ~
 
@@ -563,7 +553,7 @@ Quick reference ~
                              a .completed.actions buffer)
   `<localleader>A`          Archive the whole current charter
                              (requires state: Closed in frontmatter)
-  `:ClearheadArchiveWorkspace`  Archive all closed charters at once
+  `:Clearhead archive charter`  Archive all closed charters at once
 
 ==============================================================================
 6. KEYBINDINGS                                            *clearhead-mappings*
@@ -620,14 +610,26 @@ Navigation ~
 
 These commands are always available regardless of the current filetype.
 
-                                                       *:ClearheadInbox*
-:ClearheadInbox
-    Open the default capture file in the current window. The name predates
-    the root charter's `next.actions` becoming the default target.
-    Equivalent to `<localleader>i`.
+                                                         *:Clearhead*
+:Clearhead {verb} {noun} [args]
+    The single entry point. The grammar is verb then noun, mirroring the
+    `clearhead` CLI wherever a verb exists there (`add`, `archive`, `query`);
+    `open` and `pick` are editor-only. Every level tab-completes.
 
-                                                    *:ClearheadQuickAdd*
-:ClearheadQuickAdd
+    Verb      Noun        Does
+    `add`     `action`    |:Clearhead-add|
+    `open`    `root`      |:Clearhead-open|
+    `open`    `project`   |:Clearhead-open|
+    `open`    `workspace` |:Clearhead-open|
+    `pick`    `actions`   |:Clearhead-pick|
+    `pick`    `charters`  |:Clearhead-pick|
+    `archive` `charter`   |:Clearhead-archive|
+    `query`   `index`     |:Clearhead-query|
+    `query`   `tree`      |:Clearhead-query|
+    `query`   `graph`     |:Clearhead-query|
+
+                                                     *:Clearhead-add*
+:Clearhead add action
     Open a floating scratch outline for rapid capture. Write the root action
     as plain text and indent each subtask beneath its parent. Optional `-`,
     `*`, or `+` Markdown bullets and blank lines are ignored. Press `<C-s>`
@@ -637,31 +639,24 @@ These commands are always available regardless of the current filetype.
     `nvim_indent_style`. Equivalent to `<localleader>q` in action and charter
     buffers.
 
-                                                    *:ClearheadWorkspace*
-:ClearheadWorkspace
+                                                    *:Clearhead-open*
+:Clearhead open root
+    Open the default capture file (the root charter's `next.actions`) in the
+    current window. Equivalent to `<localleader>i`.
+
+:Clearhead open project
+    Walk upward from the current buffer to find the nearest `.clearhead/`
+    directory, then open `charters/next.actions` inside it.
+    Falls back to `open root` if no `.clearhead/` is found.
+    Equivalent to `<localleader>P`.
+
+:Clearhead open workspace
     Open the workspace data directory in the current window.
     Pairs well with a directory explorer (oil.nvim, snacks, netrw).
     Equivalent to `<localleader>p`.
 
-                                                 *:ClearheadProjectRoot*
-:ClearheadProjectRoot
-    Walk upward from the current buffer to find the nearest `.clearhead/`
-    directory, then open `charters/next.actions` inside it.
-    Falls back to `:ClearheadInbox` if no `.clearhead/` is found.
-    Equivalent to `<localleader>P`.
-
-                                                       *:ClearheadDiff*
-:ClearheadDiff
-    Open a vertical diff split of the current buffer against itself.
-    Useful for reviewing unsaved changes before writing.
-
-                                              *:ClearheadArchiveWorkspace*
-:ClearheadArchiveWorkspace
-    Archive all charters whose frontmatter carries `state: Closed` in
-    a single pass. Equivalent to `require("clearhead").archive_workspace()`.
-
-                                                *:ClearheadPickActions*
-:ClearheadPickActions
+                                                    *:Clearhead-pick*
+:Clearhead pick actions
     Open a `vim.ui.select` picker over all active `.actions` files across
     the global workspace, ancestor project workspaces, direct child repos in
     any enclosing higher-order workspace, and configured extras. Discovery is
@@ -669,14 +664,22 @@ These commands are always available regardless of the current filetype.
     `.upcoming.actions`.
     Equivalent to `<localleader>s`.
 
-                                               *:ClearheadPickCharters*
-:ClearheadPickCharters
+:Clearhead pick charters
     Open a `vim.ui.select` picker over all markdown charter documents
     (`*.md`, `**/README.md`) across all visible workspace roots.
     Equivalent to `<localleader>S`.
 
-                                                    *:ClearheadQuery*
-:ClearheadQuery [name]
+                                                  *:Clearhead-archive*
+:Clearhead archive charter
+    Archive all charters whose frontmatter carries `state: Closed` in
+    a single pass (`clearhead archive charter --closed`). Equivalent to
+    `require("clearhead").archive_workspace()`.
+
+                                                    *:Clearhead-query*
+:Clearhead query index [name]
+    `[name]` tab-completes from `clearhead query list` (built-in and saved
+    queries alike), for `query tree` and `query graph` too.
+
     Run a named index query and render the results as the quickfix list.
     Each entry jumps to the action in its source file (`<CR>`, |:cnext|,
     etc.); the entry's `user_data` carries the action's canonical id, the
@@ -701,14 +704,14 @@ These commands are always available regardless of the current filetype.
                    including blocked and undated work.
 
     Examples: >vim
-      :ClearheadQuery              " all open actions
-      :ClearheadQuery agenda       " today's list
-      :ClearheadQuery unscheduled  " undated, actionable, by priority
-      :ClearheadQuery weekly       " the week's horizon
-      :ClearheadQuery my-filter    " user query at queries/index/my-filter.sparql
+      :Clearhead query index              " all open actions
+      :Clearhead query index agenda       " today's list
+      :Clearhead query index unscheduled  " undated, actionable, by priority
+      :Clearhead query index weekly       " the week's horizon
+      :Clearhead query index my-filter    " user query at queries/index/my-filter.sparql
 <
-                                                    *:ClearheadTree*
-:ClearheadTree [name]
+
+:Clearhead query tree [name]
     Run a named tree-family query and render its validated hierarchy in a
     read-only scratch split. [name] defaults to `work-map`, the graph-backed
     charter and open-action hierarchy.
@@ -722,8 +725,8 @@ These commands are always available regardless of the current filetype.
     Canonical identity and parentage come from the CLI; Neovim only projects
     the validated nested result.
 
-                                                   *:ClearheadGraph*
-:ClearheadGraph [name]
+
+:Clearhead query graph [name]
     Run a named graph-family query and open the CLI's DOT projection in a
     read-only scratch buffer with `filetype=dot`. [name] defaults to
     `dependencies`.
@@ -983,7 +986,7 @@ current window.
 
                                                 *clearhead.open_quick_add()*
 `open_quick_add()`
-    Open the floating quick-add outline behind |:ClearheadQuickAdd|. On
+    Open the floating quick-add outline behind |:Clearhead-add|. On
     `<C-s>`, converts indentation into action depth and appends the resulting
     not-started action tree to the capture file. Refuses to write over a
     loaded capture file with unsaved changes.
@@ -1047,7 +1050,7 @@ current window.
                                                    *clearhead.open_tree()*
 `open_tree({name})`
     Run a named tree query and render it in a read-only scratch split — the
-    Lua entry point behind |:ClearheadTree|. `name` defaults to `work-map`.
+    Lua entry point behind |:Clearhead-query|. `name` defaults to `work-map`.
     Charter and action locators open their canonical source files; action
     locators also carry the source line.
 
@@ -1059,7 +1062,7 @@ current window.
                                                   *clearhead.open_graph()*
 `open_graph({name})`
     Run a named graph query and open its DOT projection — the Lua entry point
-    behind |:ClearheadGraph|. `name` defaults to `dependencies`.
+    behind |:Clearhead-query|. `name` defaults to `dependencies`.
 
                                                *clearhead.refresh_graph()*
 `refresh_graph()`
@@ -1073,7 +1076,7 @@ current window.
                                                   *clearhead.open_view()*
 `open_view({name})`
     Run a named index query and render it as the quickfix list — the Lua
-    entry point behind |:ClearheadQuery|. Each row maps to one entry:
+    entry point behind |:Clearhead-query|. Each row maps to one entry:
     `charter_root/source_file` and `source_line` become the jump target,
     the composed `name [status] due:…` becomes the display text, and the
     canonical `id` goes into the entry's `user_data` as the stable address

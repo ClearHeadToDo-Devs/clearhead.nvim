@@ -25,7 +25,7 @@ end
 
 M.expand_path = expand_path
 
---- The file quick-add and :ClearheadInbox target. `nvim_inbox_file` is an
+--- The file quick-add and :Clearhead open root target. `nvim_inbox_file` is an
 --- nvim-only override (it leaves the CLI's shared `default_file` alone);
 --- otherwise `default_file` resolves from the user workspace's charters/
 --- directory, or is used as-is when absolute (configuration.md).

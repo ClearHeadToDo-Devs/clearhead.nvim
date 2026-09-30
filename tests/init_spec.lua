@@ -380,9 +380,8 @@ describe("clearhead", function()
 
 	it("should register commands without requiring setup", function()
 		clearhead._testing["plugin-init"]()
-		assert.are.equal(2, vim.fn.exists(":ClearheadInbox"))
-		assert.are.equal(2, vim.fn.exists(":ClearheadQuickAdd"))
-		assert.are.equal(2, vim.fn.exists(":ClearheadPickActions"))
+		assert.are.equal(2, vim.fn.exists(":Clearhead"))
+		assert.are.equal(0, vim.fn.exists(":ClearheadInbox"))
 	end)
 
 	it("should apply actions buffer defaults from ftplugin hooks", function()
