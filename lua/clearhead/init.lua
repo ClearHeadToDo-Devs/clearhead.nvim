@@ -28,6 +28,7 @@ local lazy_exports = {
 	get_status = { "actions", "get_status" },
 	indent_action = { "actions", "indent_action" },
 	dedent_action = { "actions", "dedent_action" },
+	action_id_under_cursor = { "actions", "id_under_cursor" },
 	run_query = { "query", "run_query" },
 	open_view = { "view", "open" },
 	refresh_view = { "view", "refresh" },

@@ -44,14 +44,38 @@ local function get_enclosing_action_node(bufnr, linenr)
 		return nil
 	end
 	local root = vim.treesitter.get_parser(bufnr, "actions"):parse()[1]:root()
-	local node = root:named_descendant_for_range(linenr, 0, linenr, -1)
-	local current = node
+	-- Anchor on the line's first non-blank character (the `[` or depth marker).
+	-- A whole-line range (col -1 reads as "past the end") is not contained by
+	-- an action that ends on this line, so the lookup would climb to its parent.
+	local line = vim.api.nvim_buf_get_lines(bufnr, linenr, linenr + 1, false)[1] or ""
+	local col = (line:find("%S") or 1) - 1
+	local current = root:named_descendant_for_range(linenr, col, linenr, col)
 	while current do
 		local kind = current:type()
 		if kind == "root_action" or kind:match("^depth%d_action$") then
 			return current
 		end
 		current = current:parent()
+	end
+	return nil
+end
+
+--- Canonical id of the action under the cursor, or nil: a clearhead quickfix
+--- entry's user_data, or the `#uuid` of the enclosing action in an actions
+--- buffer. Only the action's own metadata is read; children are `child`
+--- fields, so a parent never answers with a child's id.
+M.id_under_cursor = function()
+	if vim.bo.buftype == "quickfix" then
+		local entry = vim.fn.getqflist()[vim.fn.line(".")]
+		local id = entry and entry.user_data
+		return type(id) == "string" and id ~= "" and id or nil
+	end
+	local action = get_enclosing_action_node(0, vim.fn.line(".") - 1)
+	for _, meta in ipairs(action and action:field("metadata") or {}) do
+		local value = meta:type() == "id" and meta:field("value")[1]
+		if value and value:type() == "uuid_value" then
+			return vim.treesitter.get_node_text(value, 0)
+		end
 	end
 	return nil
 end

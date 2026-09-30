@@ -86,18 +86,94 @@ describe("clearhead.command", function()
 			walk(command.tree, {})
 		end)
 
-		it("completes query view names from the CLI's list, minus targeted views", function()
-			local names = require("clearhead.query")
-			local saved = names.names
-			names.names = function(family)
-				assert.are.equal("index", family)
-				return { "agenda", "chain", "unscheduled" }
+		describe("query index", function()
+			local query = require("clearhead.query")
+			local saved_names, saved_charters
+
+			before_each(function()
+				saved_names, saved_charters = query.names, query.charters
+				query.names = function(family)
+					assert.are.equal("index", family)
+					return { "agenda", "chain", "unscheduled" }
+				end
+				query.charters = function()
+					return { "clearhead.nvim", "nvim-subcommands" }
+				end
+			end)
+
+			after_each(function()
+				query.names, query.charters = saved_names, saved_charters
+			end)
+
+			local function complete(line)
+				local lead = line:match("(%S*)$")
+				return command.complete(command.tree, lead, "Clearhead query index " .. line)
 			end
-			local got = command.complete(command.tree, "", "Clearhead query index ")
-			local none = command.complete(command.tree, "", "Clearhead query index agenda ")
-			names.names = saved
-			assert.are.same({ "agenda", "unscheduled" }, got)
-			assert.are.same({}, none)
+
+			it("completes view names minus targeted views, then the flag", function()
+				assert.are.same({ "agenda", "unscheduled", "--charter" }, complete(""))
+				assert.are.same({ "--charter" }, complete("agenda "))
+			end)
+
+			it("completes charter aliases after --charter, and offers the flag once", function()
+				assert.are.same({ "nvim-subcommands" }, complete("agenda --charter nv"))
+				assert.are.same({}, complete("agenda --charter nvim-subcommands "))
+			end)
+
+			it("passes every word after index to the CLI", function()
+				local ch = require("clearhead")
+				local saved = ch.open_view
+				local got
+				ch.open_view = function(args)
+					got = args
+				end
+				command.run({ "query", "index", "agenda", "--charter", "nvim-subcommands" })
+				ch.open_view = saved
+				assert.are.same({ "index", "agenda", "--charter", "nvim-subcommands" }, got)
+			end)
+		end)
+
+		describe("query chain", function()
+			local ch = require("clearhead")
+			local saved_open, saved_id, opened, notified
+
+			before_each(function()
+				saved_open, saved_id = ch.open_view, ch.action_id_under_cursor
+				opened, notified = nil, nil
+				ch.open_view = function(args)
+					opened = args
+				end
+				ch.action_id_under_cursor = function()
+					return "urn:uuid:under-cursor"
+				end
+				stub(vim, "notify", function(msg)
+					notified = msg
+				end)
+			end)
+
+			after_each(function()
+				ch.open_view, ch.action_id_under_cursor = saved_open, saved_id
+				vim.notify:revert()
+			end)
+
+			it("walks an explicit target", function()
+				command.run({ "query", "chain", "view-args" })
+				assert.are.same({ "chain", "view-args" }, opened)
+			end)
+
+			it("defaults to the action under the cursor", function()
+				command.run({ "query", "chain" })
+				assert.are.same({ "chain", "urn:uuid:under-cursor" }, opened)
+			end)
+
+			it("errors without a target or an action under the cursor", function()
+				ch.action_id_under_cursor = function()
+					return nil
+				end
+				command.run({ "query", "chain" })
+				assert.is_nil(opened)
+				assert.is_truthy(notified:find("needs a target", 1, true))
+			end)
 		end)
 
 		it("mirrors the CLI verbs it shares", function()

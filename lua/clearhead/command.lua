@@ -11,9 +11,22 @@ local function first(args)
 	return args[1]
 end
 
--- Views that need a target the `query index|tree|graph [name]` shape cannot
--- carry; the CLI exposes them as their own verb (`query chain <query>`).
+-- Index views that return nothing without a target. The CLI runs them through
+-- their own verb (`query chain <query>`, mirrored below), so they stay out of
+-- `query index` completion.
 local needs_target = { chain = true }
+
+local function starting_with(lead, candidates)
+	return vim.tbl_filter(function(c)
+		return vim.startswith(c, lead)
+	end, candidates)
+end
+
+local function view_names(family)
+	return vim.tbl_filter(function(name)
+		return not needs_target[name]
+	end, require("clearhead.query").names(family))
+end
 
 --- A `query <family> [name]` leaf: runs `open(name)` and completes `name`
 --- from the CLI's own view list.
@@ -23,15 +36,41 @@ local function view(family, open)
 			open(first(args))
 		end,
 		complete = function(lead, rest)
-			if #rest > 0 then
-				return {}
-			end
-			return vim.tbl_filter(function(name)
-				return vim.startswith(name, lead) and not needs_target[name]
-			end, require("clearhead.query").names(family))
+			return #rest > 0 and {} or starting_with(lead, view_names(family))
 		end,
 	}
 end
+
+--- `query index [name] [--charter <charter>]`: the words after `index` go to
+--- the CLI unchanged, so the CLI validates them; completion offers view names,
+--- then the flag, then charter aliases.
+local index = {
+	run = function(args)
+		ch().open_view(vim.list_extend({ "index" }, args))
+	end,
+	complete = function(lead, rest)
+		if rest[#rest] == "--charter" then
+			return starting_with(lead, require("clearhead.query").charters())
+		end
+		local flags = vim.tbl_contains(rest, "--charter") and {} or { "--charter" }
+		local names = #rest == 0 and view_names("index") or {}
+		return starting_with(lead, vim.list_extend(names, flags))
+	end,
+}
+
+--- `query chain [target]`: walk an action's predecessor chain. The target
+--- defaults to the action under the cursor (a quickfix entry or an actions
+--- buffer line); the CLI resolves ids, aliases and names alike.
+local chain = {
+	run = function(args)
+		local target = first(args) or ch().action_id_under_cursor()
+		if not target then
+			vim.notify("Clearhead: query chain needs a target or an action under the cursor", vim.log.levels.ERROR)
+			return
+		end
+		ch().open_view({ "chain", target })
+	end,
+}
 
 M.tree = {
 	add = {
@@ -83,9 +122,8 @@ M.tree = {
 		end,
 	},
 	query = {
-		index = view("index", function(name)
-			ch().open_view(name)
-		end),
+		index = index,
+		chain = chain,
 		tree = view("tree", function(name)
 			ch().open_tree(name)
 		end),

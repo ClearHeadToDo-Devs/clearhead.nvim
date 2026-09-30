@@ -116,6 +116,30 @@ M.index_args = function(spec)
 	return { "index", spec }
 end
 
+--- Aliases of the charters the CLI can see from the cwd, for `--charter`
+--- completion. Charters without an alias are skipped: titles carry spaces,
+--- which a command-line word cannot.
+M.charters = function()
+	local bin = config.get_bin_path()
+	if not bin then
+		return {}
+	end
+	local done = vim.system({ bin, "read", "charters", "--format", "json" }, { cwd = vim.fn.getcwd(), text = true })
+		:wait(2000)
+	local ok, doc = pcall(vim.json.decode, done.stdout or "")
+	if done.code ~= 0 or not ok or type(doc) ~= "table" then
+		return {}
+	end
+	local aliases = {}
+	for _, charter in ipairs(doc.charters or {}) do
+		if type(charter.alias) == "string" then
+			aliases[#aliases + 1] = charter.alias
+		end
+	end
+	table.sort(aliases)
+	return aliases
+end
+
 --- Run an index-shaped query and pass its validated rows to callback(rows).
 --- `spec` is a view name or the argv after `clearhead query` (see index_args),
 --- so views with arguments (`--charter`, `chain <target>`) go through here too.

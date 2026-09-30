@@ -627,6 +627,7 @@ These commands are always available regardless of the current filetype.
     `archive` `charter`   |:Clearhead-archive|
     `debug`               |:Clearhead-debug|
     `query`   `index`     |:Clearhead-query|
+    `query`   `chain`     |:Clearhead-query|
     `query`   `tree`      |:Clearhead-query|
     `query`   `graph`     |:Clearhead-query|
 
@@ -685,9 +686,12 @@ These commands are always available regardless of the current filetype.
     view shows unexpected rows. `r` re-runs it, `q` closes it.
 
                                                     *:Clearhead-query*
-:Clearhead query index [name]
+:Clearhead query index [name] [--charter {charter}]
     `[name]` tab-completes from `clearhead query list` (built-in and saved
-    queries alike), for `query tree` and `query graph` too.
+    queries alike), for `query tree` and `query graph` too. `--charter`
+    scopes the rows to a charter and its sub-charters and completes charter
+    aliases. Every word after `index` goes to the CLI unchanged, so its
+    errors (e.g. a charter with no stamped `id`) come back as notifications.
 
     Run a named index query and render the results as the quickfix list.
     Each entry jumps to the action in its source file (`<CR>`, |:cnext|,
@@ -721,7 +725,15 @@ These commands are always available regardless of the current filetype.
       :Clearhead query index unscheduled  " undated, actionable, by priority
       :Clearhead query index weekly       " the week's horizon
       :Clearhead query index my-filter    " user query at queries/index/my-filter.sparql
+      :Clearhead query index agenda --charter nvim-subcommands
 <
+
+:Clearhead query chain [target]
+    Walk one action's predecessor chain into the quickfix list, like
+    `clearhead query chain {target}`. [target] is an id, short id, alias or
+    name; it defaults to the action under the cursor — a clearhead quickfix
+    entry, or the `#id` of the action on the current line of an actions
+    buffer. Refresh keeps the target.
 
 :Clearhead query tree [name]
     Run a named tree-family query and render its validated hierarchy in a
@@ -926,6 +938,12 @@ current window.
 `dedent_action(bufnr, linenr)`
     Decrease the depth of the action on `linenr` by one. Removes one `>`
     marker. Notifies and does nothing when the action is already at root.
+
+                                     *clearhead.action_id_under_cursor()*
+`action_id_under_cursor()`
+    The canonical id of the action under the cursor, or nil: a clearhead
+    quickfix entry's id, or the `#id` of the action on the current line of
+    an actions buffer (never a parent's or child's).
 
                                                    *clearhead.archive()*
 `archive([bufnr])`
