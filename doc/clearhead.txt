@@ -613,7 +613,8 @@ These commands are always available regardless of the current filetype.
                                                          *:Clearhead*
 :Clearhead {verb} {noun} [args]
     The single entry point. The grammar is verb then noun, mirroring the
-    `clearhead` CLI wherever a verb exists there (`add`, `archive`, `query`);
+    `clearhead` CLI wherever a verb exists there (`add`, `archive`, `debug`,
+    `query`);
     `open` and `pick` are editor-only. Every level tab-completes.
 
     Verb      Noun        Does
@@ -624,6 +625,7 @@ These commands are always available regardless of the current filetype.
     `pick`    `actions`   |:Clearhead-pick|
     `pick`    `charters`  |:Clearhead-pick|
     `archive` `charter`   |:Clearhead-archive|
+    `debug`               |:Clearhead-debug|
     `query`   `index`     |:Clearhead-query|
     `query`   `tree`      |:Clearhead-query|
     `query`   `graph`     |:Clearhead-query|
@@ -674,6 +676,13 @@ These commands are always available regardless of the current filetype.
     Archive all charters whose frontmatter carries `state: Closed` in
     a single pass (`clearhead archive charter --closed`). Equivalent to
     `require("clearhead").archive_workspace()`.
+
+                                                    *:Clearhead-debug*
+:Clearhead debug
+    Show `clearhead debug` (resolved config and workspace) in a read-only
+    scratch split, run from the current |:cd| like every query. It answers
+    "which workspace is the CLI using, and why?" — e.g. when a refreshed
+    view shows unexpected rows. `r` re-runs it, `q` closes it.
 
                                                     *:Clearhead-query*
 :Clearhead query index [name]
@@ -1003,6 +1012,13 @@ current window.
                                                *clearhead.open_workspace()*
 `open_workspace(winnr)`
     Open the workspace data directory in window `winnr`.
+
+                                              *clearhead.open_cli_output()*
+`open_cli_output({args})`
+    Run `clearhead {args...}` from the current |:cd| and show its stdout in a
+    read-only scratch split named `clearhead://{args joined by /}`. The same
+    command line reuses its buffer; `r` re-runs it, `q` closes it. Backs
+    |:Clearhead-debug|; e.g. `open_cli_output({ "query", "show", "agenda" })`.
 
                                             *clearhead.open_project_root()*
 `open_project_root(winnr)`

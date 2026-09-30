@@ -77,6 +77,11 @@ M.tree = {
 			end,
 		},
 	},
+	debug = {
+		run = function()
+			ch().open_cli_output({ "debug" })
+		end,
+	},
 	query = {
 		index = view("index", function(name)
 			ch().open_view(name)

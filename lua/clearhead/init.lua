@@ -38,6 +38,7 @@ local lazy_exports = {
 	refresh_graph = { "graph_view", "refresh" },
 	preview_graph = { "graph_view", "preview" },
 	open_quick_add = { "quick_add", "open" },
+	open_cli_output = { "text_view", "open" },
 }
 
 -- Both the wrappers and the distinct module set below are projections of the
