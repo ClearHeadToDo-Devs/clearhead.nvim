@@ -1088,9 +1088,9 @@ current window.
       row.id            string   canonical action identity (`id` client surface)
       row.name          string   action name
       row.status        string   "NotStarted" | "InProgress" | "Blocked" | …
-      row.source_file   string   path relative to charter_root
+      row.source_file   string   path relative to data_root (`charters/…`)
       row.source_line   integer  1-based line number
-      row.charter_root  string   absolute path to the workspace charter root
+      row.data_root     string   absolute path to the workspace data root
 <
     Named queries may return additional columns (e.g. `scheduled_at`,
     `due_date`). Extra fields are passed through as-is.
@@ -1104,7 +1104,7 @@ current window.
         }, function(choice)
           if choice then
             vim.cmd("edit " .. vim.fn.fnameescape(
-              choice.charter_root .. "/" .. choice.source_file))
+              choice.data_root .. "/" .. choice.source_file))
             vim.api.nvim_win_set_cursor(0, { tonumber(choice.source_line), 0 })
           end
         end)
@@ -1143,7 +1143,7 @@ current window.
 `open_view({spec})`
     Run an index query and render it as the quickfix list — the Lua
     entry point behind |:Clearhead-query|. Each row maps to one entry:
-    `charter_root/source_file` and `source_line` become the jump target,
+    `data_root/source_file` and `source_line` become the jump target,
     the composed `name [status] due:…` becomes the display text, and the
     canonical `id` goes into the entry's `user_data` as the stable address
     for mutation verbs.

@@ -43,7 +43,7 @@ M.to_qf_entry = function(row)
 		text = text .. " due:" .. tostring(row.due_date):sub(1, 10)
 	end
 	return {
-		filename = (row.charter_root or "") .. "/" .. (row.source_file or ""),
+		filename = (row.data_root or "") .. "/" .. (row.source_file or ""),
 		lnum = tonumber(row.source_line) or 1,
 		text = text,
 		user_data = row.id,

@@ -75,7 +75,7 @@ local function source_path(node)
 	if node.source_file:sub(1, 1) == "/" then
 		return node.source_file
 	end
-	local root = (node.charter_root or ""):gsub("/$", "")
+	local root = (node.data_root or ""):gsub("/$", "")
 	return root ~= "" and (root .. "/" .. node.source_file) or node.source_file
 end
 

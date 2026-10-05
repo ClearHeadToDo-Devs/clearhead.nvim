@@ -5,12 +5,14 @@ local tree_view = require("clearhead.tree_view")
 describe("tree view", function()
 	local original_run_tree
 	local root
+	local data_root
 	local charter_root
 	local tree
 
 	before_each(function()
 		root = vim.fn.tempname()
-		charter_root = root .. "/.clearhead/charters"
+		data_root = root .. "/.clearhead"
+		charter_root = data_root .. "/charters"
 		vim.fn.mkdir(charter_root .. "/work", "p")
 		vim.fn.writefile({ "# Work" }, charter_root .. "/work/README.md")
 		vim.fn.writefile({ "[ ] Ship" }, charter_root .. "/work/next.actions")
@@ -20,16 +22,16 @@ describe("tree view", function()
 				id = "urn:uuid:charter",
 				kind = "charter",
 				name = "Work",
-				charter_root = charter_root,
-				source_file = "work/README.md",
+				data_root = data_root,
+				source_file = "charters/work/README.md",
 				children = {
 					{
 						id = "urn:uuid:action",
 						kind = "action",
 						name = "Ship",
 						status = "NotStarted",
-						charter_root = charter_root,
-						source_file = "work/next.actions",
+						data_root = data_root,
+						source_file = "charters/work/next.actions",
 						source_line = 1,
 					},
 				},

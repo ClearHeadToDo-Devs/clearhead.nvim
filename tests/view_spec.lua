@@ -7,10 +7,10 @@ describe("quickfix view projection", function()
 			id = "urn:uuid:87a4395a-1dea-4d10-a82c-ae0b2e5d8985",
 			name = "Make mutation verbs addressable by a bare id",
 			status = "NotStarted",
-			source_file = "agenda-view/next.actions",
+			source_file = "charters/agenda-view/next.actions",
 			source_line = 3,
-			charter_root = "/ws/.clearhead/charters",
-			due_date = "2026-07-11T23:59:59Z",
+			data_root = "/ws/.clearhead",
+			due_date = "2026-07-11",
 		})
 
 		assert.are.equal("/ws/.clearhead/charters/agenda-view/next.actions", entry.filename)
@@ -27,9 +27,9 @@ describe("quickfix view projection", function()
 			id = "urn:uuid:x",
 			name = "Undated action",
 			status = "InProgress",
-			source_file = "next.actions",
+			source_file = "charters/next.actions",
 			source_line = "7",
-			charter_root = "/ws/charters",
+			data_root = "/ws",
 		})
 
 		assert.are.equal("Undated action [InProgress]", entry.text)
