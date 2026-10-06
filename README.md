@@ -124,4 +124,4 @@ git config core.hooksPath .githooks
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
