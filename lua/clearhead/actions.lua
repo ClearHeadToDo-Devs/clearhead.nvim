@@ -1,6 +1,8 @@
 local M = {}
 
-local STATE_QUERY = [[((state [
+-- The plugin's own query over action states. Exported so :checkhealth can
+-- compile it against the installed parser and catch grammar drift.
+M.STATE_QUERY = [[((state [
   (state_not_started)
   (state_completed)
   (state_in_progress)
@@ -28,7 +30,7 @@ local function get_action_state_node(bufnr, linenr)
 	if not root then
 		return nil
 	end
-	local query = vim.treesitter.query.parse("actions", STATE_QUERY)
+	local query = vim.treesitter.query.parse("actions", M.STATE_QUERY)
 	local found = nil
 	for _, node in query:iter_captures(root, bufnr, linenr, linenr + 1) do
 		found = node
@@ -154,7 +156,7 @@ M.set_state_tree = function(bufnr, linenr, state)
 	-- The action node's range spans the entire subtree (parent + all children).
 	local srow, _, erow, _ = action_node:range()
 
-	local query = vim.treesitter.query.parse("actions", STATE_QUERY)
+	local query = vim.treesitter.query.parse("actions", M.STATE_QUERY)
 	local changes = {}
 	for _, node in query:iter_captures(root, bufnr, srow, erow + 1) do
 		local ns, nc, _, nec = node:range()
@@ -246,7 +248,7 @@ M.get_status = function(bufnr)
 		return ""
 	end
 
-	local query = vim.treesitter.query.parse("actions", STATE_QUERY)
+	local query = vim.treesitter.query.parse("actions", M.STATE_QUERY)
 	local total, completed = 0, 0
 
 	for _, node in query:iter_captures(root, bufnr, 0, -1) do

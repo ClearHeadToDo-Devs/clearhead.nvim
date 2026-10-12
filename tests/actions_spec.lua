@@ -60,3 +60,17 @@ describe("actions resolve the action on the cursor line", function()
 		assert.are.equal("[-] Lone root", vim.api.nvim_buf_get_lines(0, 3, 4, false)[1])
 	end)
 end)
+
+-- Guards against grammar drift: a parser whose node names moved on from the
+-- plugin's state query breaks state toggling without any visible error.
+describe("the state query", function()
+	it("compiles against the installed parser", function()
+		if not pcall(vim.treesitter.language.inspect, "actions") then
+			pending("actions tree-sitter parser is not installed")
+			return
+		end
+		assert.has_no.errors(function()
+			vim.treesitter.query.parse("actions", actions.STATE_QUERY)
+		end)
+	end)
+end)

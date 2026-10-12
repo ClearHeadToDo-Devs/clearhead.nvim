@@ -65,14 +65,65 @@ check_cli = function()
   end
 end
 
+-- The grammar's own version (tree-sitter.json), or nil for a grammar built
+-- before ABI 15 or a Neovim too old to expose it.
+local function grammar_version(info)
+  local m = info.metadata
+  return m and string.format("%d.%d.%d", m.major_version, m.minor_version, m.patch_version)
+end
+
+-- Queries nvim-treesitter installs alongside the parser from tree-sitter-actions.
+local GRAMMAR_QUERIES = { "highlights", "folds", "indents" }
+
+-- Compiles every query the plugin relies on against the installed parser. A
+-- parser that drifted from its queries fails here instead of silently
+-- breaking highlighting or state toggling.
+local function check_queries()
+  local compiled = {}
+  local function check(name, compile)
+    local ok, query = pcall(compile)
+    if not ok then
+      vim.health.error(name .. " query does not compile against the parser: " .. tostring(query), ":TSUpdate actions")
+    elseif not query then
+      vim.health.warn(name .. " query not found on the runtimepath", ":TSUpdate actions")
+    else
+      table.insert(compiled, name)
+    end
+  end
+
+  for _, name in ipairs(GRAMMAR_QUERIES) do
+    check(name, function()
+      return vim.treesitter.query.get("actions", name)
+    end)
+  end
+  check("state", function()
+    return vim.treesitter.query.parse("actions", require("clearhead.actions").STATE_QUERY)
+  end)
+
+  if #compiled > 0 then
+    vim.health.ok("queries: " .. table.concat(compiled, ", "))
+  end
+end
+
 check_treesitter = function()
   vim.health.start("clearhead: Tree-sitter grammar")
-  local ok = pcall(vim.treesitter.language.inspect, "actions")
-  if ok then
-    vim.health.ok("actions grammar installed")
-  else
+  local ok, info = pcall(vim.treesitter.language.inspect, "actions")
+  if not ok then
     vim.health.error("actions grammar not installed", ":TSInstall actions")
+    return
   end
+
+  local version = grammar_version(info)
+  if version then
+    vim.health.ok(string.format("parser grammar v%s (ABI %d)", version, info.abi_version))
+  else
+    vim.health.warn(
+      "parser grammar does not report its version",
+      "Run :TSUpdate actions (reading it needs an ABI 15 grammar and Neovim >= 0.12)"
+    )
+  end
+
+  check_queries()
 end
 
 check_config = function()
