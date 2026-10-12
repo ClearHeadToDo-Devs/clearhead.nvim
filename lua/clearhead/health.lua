@@ -11,8 +11,8 @@ local check_neovim, check_cli, check_treesitter, check_config, check_modules
 M.check = function()
   check_neovim()
   check_modules()
-  check_cli()
-  check_treesitter()
+  local cli_output = check_cli()
+  check_treesitter(cli_output)
   check_config()
 end
 
@@ -46,6 +46,7 @@ check_modules = function()
   end
 end
 
+-- Returns the `--version` output so later checks need not run the CLI again.
 check_cli = function()
   vim.health.start("clearhead: CLI binary")
   local bin = config.get_bin_path()
@@ -60,6 +61,7 @@ check_cli = function()
   local version = vim.fn.system({ bin, "--version" }):gsub("%s+$", "")
   if vim.v.shell_error == 0 then
     vim.health.ok(version .. " (" .. bin .. ")")
+    return version
   else
     vim.health.warn("Binary found but --version failed", bin)
   end
@@ -70,6 +72,33 @@ end
 local function grammar_version(info)
   local m = info.metadata
   return m and string.format("%d.%d.%d", m.major_version, m.minor_version, m.patch_version)
+end
+
+-- Compares the parser's grammar with the one the CLI links, which can drift
+-- apart and let the CLI write syntax the editor parses as ERROR. Returns a
+-- health report as plain data, or nil when there is nothing to compare.
+local function grammar_drift(parser_version, cli_output)
+  if not (parser_version and cli_output) then
+    return nil -- the missing side was already reported
+  end
+  local cli_version = cli_output:match("grammar v(%d+%.%d+%.%d+)")
+  if not cli_version then
+    return { level = "info", msg = "CLI does not report grammar version" }
+  elseif cli_version == parser_version then
+    return { level = "ok", msg = "clearhead CLI grammar v" .. cli_version }
+  elseif vim.version.lt(parser_version, cli_version) then
+    return {
+      level = "warn",
+      msg = string.format("parser grammar v%s is behind the clearhead CLI's v%s", parser_version, cli_version),
+      advice = "Bump the actions parser revision in your Neovim config, then :TSUpdate actions",
+    }
+  else
+    return {
+      level = "warn",
+      msg = string.format("clearhead CLI grammar v%s is behind the parser's v%s", cli_version, parser_version),
+      advice = "Upgrade clearhead",
+    }
+  end
 end
 
 -- Queries nvim-treesitter installs alongside the parser from tree-sitter-actions.
@@ -105,7 +134,7 @@ local function check_queries()
   end
 end
 
-check_treesitter = function()
+check_treesitter = function(cli_output)
   vim.health.start("clearhead: Tree-sitter grammar")
   local ok, info = pcall(vim.treesitter.language.inspect, "actions")
   if not ok then
@@ -121,6 +150,11 @@ check_treesitter = function()
       "parser grammar does not report its version",
       "Run :TSUpdate actions (reading it needs an ABI 15 grammar and Neovim >= 0.12)"
     )
+  end
+
+  local drift = grammar_drift(version, cli_output)
+  if drift then
+    vim.health[drift.level](drift.msg, drift.advice)
   end
 
   check_queries()
@@ -175,5 +209,9 @@ check_config = function()
     vim.health.info("LSP disabled (nvim_lsp_enable = false)")
   end
 end
+
+M._testing = {
+  ["grammar-drift"] = grammar_drift,
+}
 
 return M
