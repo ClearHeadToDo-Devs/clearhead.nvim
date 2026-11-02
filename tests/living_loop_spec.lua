@@ -6,7 +6,7 @@ local function wait_for(predicate, description)
 end
 
 describe("living loop", function()
-	it("reads, mutates by id, and re-reads an archived completion", function()
+	it("reads, closes by id in place, then explicitly archives the completion", function()
 		if vim.fn.executable("clearhead") == 0 then
 			pending("clearhead is not available on PATH")
 			return
@@ -44,6 +44,22 @@ describe("living loop", function()
 		assert.is_falsy(items[1].text:find("second task", 1, true))
 		assert.is_falsy(items[2].text:find("second task", 1, true))
 		assert.are.equal(2, vim.api.nvim_win_get_cursor(0)[1])
+
+		local active = assert(io.open(charters .. "/home.actions", "r"))
+		local active_content = active:read("*a")
+		active:close()
+		assert.is_truthy(active_content:find("[x] second task", 1, true))
+		assert.is_truthy(active_content:find("#01951111-0000-7000-8000-000000000052", 1, true))
+		assert.are.equal(0, vim.fn.filereadable(charters .. "/home.completed.actions"))
+
+		local archive_output = vim.fn.system({
+			"clearhead", "archive", "action", "01951111-0000-7000-8000-000000000052",
+		})
+		assert.are.equal(0, vim.v.shell_error, archive_output)
+		local remaining = table.concat(vim.fn.readfile(charters .. "/home.actions"), "\n")
+		assert.is_falsy(remaining:find("second task", 1, true))
+		assert.is_truthy(remaining:find("first task", 1, true))
+		assert.is_truthy(remaining:find("third task", 1, true))
 
 		local archive = assert(io.open(charters .. "/home.completed.actions", "r"))
 		local content = archive:read("*a")
