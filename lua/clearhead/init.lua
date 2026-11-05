@@ -332,14 +332,25 @@ end
 --- next.actions / README.md → parent directory name, except that root-charter
 --- files at charters/next.actions or charters/README.md use the workspace /
 --- project name instead of the literal directory name "charters".
+local function action_file_role(path)
+	local tail = vim.fn.fnamemodify(path, ":t")
+	for _, role in ipairs({ "habits", "completed", "upcoming" }) do
+		local stem = tail:match("^(.*)%." .. role .. "%.actions$")
+		if stem then return role, stem end
+	end
+	local stem = tail:match("^(.*)%.actions$")
+	if stem then return "actions", stem end
+end
+
+local function live_action_file(path)
+	local role = action_file_role(path)
+	return role == "actions" and not path:match("/templates/") and not path:match("/archive/")
+end
+
 local function charter_stem(path)
 	local tail = vim.fn.fnamemodify(path, ":t")
-	if
-		tail == "next.actions"
-		or tail == "next.completed.actions"
-		or tail == "next.upcoming.actions"
-		or tail == "README.md"
-	then
+	local _, action_stem = action_file_role(path)
+	if action_stem == "next" or tail == "README.md" then
 		local parent = vim.fn.fnamemodify(path, ":h:t")
 		if parent == "charters" then
 			local workspace_root = workspace_root_for_charter_path(path)
@@ -349,9 +360,7 @@ local function charter_stem(path)
 		end
 		return parent
 	end
-	local stem = vim.fn.fnamemodify(path, ":t:r")
-	stem = stem:gsub("%.completed$", ""):gsub("%.upcoming$", "")
-	return stem
+	return action_stem or vim.fn.fnamemodify(path, ":t:r")
 end
 
 local function charter_workspace_root(path)
@@ -376,6 +385,9 @@ local function find_charter_files(charters_root, predicate)
 		type = "file",
 		limit = math.huge,
 	})
+	files = vim.tbl_filter(function(path)
+		return not path:match("/templates/") and not path:match("/archive/")
+	end, files)
 	table.sort(files)
 	return files
 end
@@ -584,8 +596,7 @@ end
 M.archive_saved = function(bufnr)
 	bufnr = bufnr or vim.api.nvim_get_current_buf()
 	local filename = vim.api.nvim_buf_get_name(bufnr)
-	local tail = vim.fn.fnamemodify(filename, ":t")
-	if filename == "" or tail:match("%.completed%.actions$") or tail:match("%.upcoming%.actions$") then
+	if not live_action_file(filename) then
 		return
 	end
 
@@ -656,7 +667,8 @@ M.archive = function(bufnr)
 	-- .completed.actions files belong to closed-charter archival. Route them to
 	-- `archive charter --file` so the CLI can infer root `next` charters too.
 	local tail = vim.fn.fnamemodify(filename, ":t")
-	if tail:match("%.completed%.actions$") then
+	local role = action_file_role(tail)
+	if role == "completed" or role == "habits" then
 		vim.api.nvim_buf_call(bufnr, function()
 			vim.cmd("write")
 		end)
@@ -937,9 +949,7 @@ M.pick_action_file = function()
 
 	for _, root in ipairs(roots) do
 		local files = find_charter_files(root.charters, function(name)
-			return name:match("%.actions$")
-				and not name:match("%.completed%.actions$")
-				and not name:match("%.upcoming%.actions$")
+			return live_action_file(name)
 		end)
 
 		for _, path in ipairs(files) do
@@ -1074,6 +1084,8 @@ M._testing = {
 	["workspace-cwd-for-path"] = function(path)
 		return workspace_cwd_for_path(path)
 	end,
+	["live-action-file"] = live_action_file,
+	["action-file-role"] = action_file_role,
 	["charter-stem"] = function(path)
 		return charter_stem(path)
 	end,
