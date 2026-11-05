@@ -27,7 +27,7 @@ describe("habit_reader_conformance", function()
 
 	it("keeps parent role names and directory-form charters live", function()
 		local live = clearhead._testing["live-action-file"]
-		for _, parent in ipairs({ "archive", "templates" }) do
+		for _, parent in ipairs({ "archive", "templates", "charters" }) do
 			local tmp = vim.fn.tempname() .. "/" .. parent .. "/ws"
 			local root = tmp .. "/.clearhead/charters"
 			vim.fn.mkdir(root .. "/archive", "p")
@@ -35,6 +35,12 @@ describe("habit_reader_conformance", function()
 			vim.fn.writefile({ "[ ] Task" }, root .. "/archive/next.actions")
 			assert.is_true(not not live(root .. "/home.actions"))
 			assert.is_true(not not live(root .. "/archive/next.actions"))
+			for _, role in ipairs({ "templates", "archive" }) do
+				local path = tmp .. "/.clearhead/" .. role .. "/x.actions"
+				vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
+				vim.fn.writefile({ "[ ] Not executable" }, path)
+				assert.is_false(not not live(path), path)
+			end
 			local files = clearhead._testing["find-charter-files"](root, function(name) return name:match("%.actions$") end)
 			assert.are.equal(2, #files)
 			vim.fn.delete(tmp, "rf")
