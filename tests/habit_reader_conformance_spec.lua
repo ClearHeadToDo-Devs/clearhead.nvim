@@ -13,16 +13,20 @@ describe("habit_reader_conformance", function()
 
 	it("excludes Habit, terminal, template and archived files from live pickers", function()
 		local live = clearhead._testing["live-action-file"]
-		assert.is_true(live("/workspace/charters/work.actions"))
+		local tmp = vim.fn.tempname()
+		local workspace = tmp .. "/.clearhead"
+		vim.fn.mkdir(workspace .. "/charters", "p")
+		assert.is_true(live(workspace .. "/charters/work.actions"))
 		for _, path in ipairs({
-			"/workspace/charters/work.habits.actions",
-			"/workspace/charters/work.completed.actions",
-			"/workspace/charters/work.upcoming.actions",
-			"/workspace/templates/named.actions",
-			"/workspace/archive/work.actions",
+			"charters/work.habits.actions",
+			"charters/work.completed.actions",
+			"charters/work.upcoming.actions",
+			"templates/named.actions",
+			"archive/work.actions",
 		}) do
-			assert.is_false(not not live(path), path)
+			assert.is_false(not not live(workspace .. "/" .. path), path)
 		end
+		vim.fn.delete(tmp, "rf")
 	end)
 
 	it("keeps parent role names and directory-form charters live", function()
