@@ -48,7 +48,9 @@ describe("actions resolve the action on the cursor line", function()
 		end
 		actions.set_state_tree(0, 1, "_")
 		local got = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-		assert.are.same({ lines[1], (lines[2]:gsub("%[ %]", "[_]")), lines[3], lines[4] }, got)
+		local date = got[2]:match(" (%%%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d)$")
+		assert.is_not_nil(date)
+		assert.are.same({ lines[1], (lines[2]:gsub("%[ %]", "[_]")) .. " " .. date, lines[3], lines[4] }, got)
 	end)
 
 	it("set_state_tree finds a childless root action", function()
