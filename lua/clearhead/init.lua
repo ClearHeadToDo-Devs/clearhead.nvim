@@ -328,10 +328,7 @@ local function set_window_cwd(winnr, dir)
 	end)
 end
 
---- Derive a human-readable charter name from a file path inside charters/.
---- next.actions / README.md → parent directory name, except that root-charter
---- files at charters/next.actions or charters/README.md use the workspace /
---- project name instead of the literal directory name "charters".
+--- Classify the complete actions suffix before deriving a charter stem.
 local function action_file_role(path)
 	local tail = vim.fn.fnamemodify(path, ":t")
 	for _, role in ipairs({ "habits", "completed", "upcoming" }) do
@@ -344,9 +341,14 @@ end
 
 local function live_action_file(path)
 	local role = action_file_role(path)
-	return role == "actions" and not path:match("/templates/") and not path:match("/archive/")
+	-- Absolute live resources belong under charters/. Everything beneath that
+	-- root is ordinary, including directories named archive or templates.
+	return role == "actions" and (not path:match("/") or path:match("/charters/") ~= nil)
 end
 
+--- Derive a human-readable charter name from a file path inside charters/.
+--- next.actions / README.md use the parent name, except root-charter files,
+--- which use the workspace/project name rather than the literal "charters".
 local function charter_stem(path)
 	local tail = vim.fn.fnamemodify(path, ":t")
 	local _, action_stem = action_file_role(path)
@@ -385,9 +387,6 @@ local function find_charter_files(charters_root, predicate)
 		type = "file",
 		limit = math.huge,
 	})
-	files = vim.tbl_filter(function(path)
-		return not path:match("/templates/") and not path:match("/archive/")
-	end, files)
 	table.sort(files)
 	return files
 end
@@ -1084,6 +1083,7 @@ M._testing = {
 	["workspace-cwd-for-path"] = function(path)
 		return workspace_cwd_for_path(path)
 	end,
+	["find-charter-files"] = find_charter_files,
 	["live-action-file"] = live_action_file,
 	["action-file-role"] = action_file_role,
 	["charter-stem"] = function(path)
