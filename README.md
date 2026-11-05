@@ -7,7 +7,7 @@ Neovim plugin for the [ClearHead](https://github.com/ClearHeadToDo-Devs/clearhea
 - Neovim 0.10+
 - `nvim-treesitter` with the `actions` grammar installed
 - `clearhead-lsp` on `PATH` (or set `nvim_lsp_binary_path`) for document intelligence
-- `clearhead` CLI for query views and mutations such as complete, normalize, and archive
+- `clearhead` CLI v0.4.0+ for query views and mutations such as complete, normalize, archive, and unarchive
 
 During the extraction transition, the plugin can temporarily fall back to `clearhead start lsp` when the standalone server is unavailable.
 
@@ -44,7 +44,7 @@ require("clearhead").setup({
   additional_workspaces = {},        -- extra workspace roots to surface in pickers/LSP
   nvim_auto_normalize   = true,      -- assign missing UUIDs on save
   nvim_format_on_save   = true,      -- format via LSP on BufWritePre
-  nvim_archive_on_save  = false,     -- move terminal actions after each save
+  nvim_archive_on_save  = false,     -- move fully closed root trees after each save
   nvim_lsp_enable       = true,      -- auto-attach clearhead-lsp
   nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
   nvim_inbox_file       = "",        -- nvim-only capture path override
@@ -94,6 +94,16 @@ When you open a charter markdown file (`charters/*.md` or `charters/**/README.md
 - `<localleader>s` / `<localleader>S` open the charter pickers
 - `<localleader>q` quick-add an indented action outline to the default capture file
 - `<localleader>p` / `<localleader>P` workspace navigation
+
+## Closing, reopening, and moving history
+
+Closing changes state in place; it does not archive. In Core v0.4.0, `clearhead complete action <id>` and `cancel action <id>` close only the target, while `reopen action <id>` reopens only the target in the active file. Add `--cascade` to include descendants. A close cascade forces its target to the requested state, but preserves already-closed descendants' states and dates, even when walking through them to reach open grandchildren. A target already in the requested state keeps its date. The editor's `<localleader>X` / `set_state_tree(..., "x")` follows this close-cascade rule; ordinary state mappings edit one line.
+
+`clearhead archive action <id>` moves one fully closed root tree to its `.completed.actions` sibling; `archive actions` sweeps all eligible roots. Neither moves a child on its own, nor a root with open descendants. `<localleader>a` saves and sweeps the current active file.
+
+Use `:Clearhead unarchive action <id>` to move a whole archived root tree back without changing states or dates. Add `--reopen` to reopen only the root, or `--reopen --cascade` to reopen it and all closed descendants, clearing their completion dates. A non-root is refused with its root named; `--cascade` requires `--reopen`. CLI scoping flags and `--dry-run` are forwarded. Save modified `.actions` buffers first; the command runs synchronously and refreshes clean buffers without saving them.
+
+**Archive-on-save is unchanged:** off by default. With `nvim_archive_on_save = true`, a plain unarchive holds only until the next save of that active file, even if the edit is elsewhere. The fully closed tree is swept back by design, preserving states, dates, and links. Reopen the root before saving (or use `--reopen`) to keep it active. Reopening only the root can produce the normal W003 warning over its still-closed children. Reopening an archived action directly is refused: unarchive its root first.
 
 ## Documentation
 

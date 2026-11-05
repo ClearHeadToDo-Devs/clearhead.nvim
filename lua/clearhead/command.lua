@@ -164,6 +164,19 @@ M.tree = {
 			end,
 		},
 	},
+	unarchive = {
+		action = {
+			run = function(args)
+				ch().unarchive(args)
+			end,
+			complete = function(lead, rest)
+				local flags = { "--reopen", "--cascade", "--dry-run", "--charter", "--file", "--workspace" }
+				return starting_with(lead, vim.tbl_filter(function(flag)
+					return not vim.tbl_contains(rest, flag)
+				end, flags))
+			end,
+		},
+	},
 	jot = jot,
 	debug = {
 		run = function()

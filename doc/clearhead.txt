@@ -92,7 +92,7 @@ All keys are optional; defaults shown below. >lua
     -- Neovim-specific
     nvim_auto_normalize   = true,      -- add missing UUIDs on save
     nvim_format_on_save   = true,      -- format on BufWritePre via LSP
-    nvim_archive_on_save  = false,     -- move terminal actions after save
+    nvim_archive_on_save  = false,     -- move fully closed root trees after save
     nvim_lsp_enable       = true,      -- auto-start clearhead-lsp
     nvim_lsp_binary_path  = "",        -- explicit clearhead-lsp path (auto-detected)
     nvim_inbox_file       = "",        -- nvim-only capture path override
@@ -369,7 +369,7 @@ State cycling reference ~
 
   `<localleader><space>`   Cycle through all states in order
   `<localleader>x`         Complete (single action)
-  `<localleader>X`         Complete action AND all its children recursively
+  `<localleader>X`         Complete target and open descendants; keep closed members
   `<localleader>-`         Mark in progress
   `<localleader>=`         Mark blocked/awaiting
   `<localleader>_`         Cancel
@@ -492,7 +492,8 @@ and any `additional_workspaces` you configure.
 Actions move through three stages before leaving the workspace entirely.
 
 Stage 1: Active  (`<charter>.actions`)
-  Open, in-progress, and blocked actions. This is the working file.
+  The working file, including closed actions not yet archived. Closing changes
+  state in place; it does not move lines.
 
 Stage 2: Completed  (`<charter>.completed.actions`)
   Completed and cancelled actions, kept for recent history and reference.
@@ -503,11 +504,35 @@ Stage 3: Archive  (`archive/` at the workspace root)
   its charter, action, completed-action, and sidecar files move together under
   `archive/`, preserving their paths relative to `charters/`.
 
+Close and reopen (Core v0.4.0+) ~
+
+These CLI verbs change state, not storage:
+  `clearhead complete action <id>`    Complete only the target
+  `clearhead cancel action <id>`      Cancel only the target
+  `clearhead reopen action <id>`      Reopen only the target in the active file
+
+The single close verbs refuse an already-closed target. Add `--cascade` to
+close the target and every open descendant, walking through closed members.
+Closed members keep their state and completion date. The target is forced:
+a cancelled target becomes completed for `complete --cascade` (and vice versa
+for cancel), with a fresh date; a target already in the desired state keeps
+its date. A cascade with nothing to do succeeds without writing.
+
+`reopen --cascade` reopens closed members and clears their dates, preserving
+already-open members' states. Reopening an archived action is refused, naming
+`unarchive` and its root. The editor's ordinary state mappings edit one line;
+`<localleader>X` / |clearhead.set_state_tree()| follows the close-cascade rule.
+
 Moving from Stage 1 → Stage 2 ~
 
 Press `<localleader>a` in any active `.actions` buffer. The plugin saves the
 buffer, runs:
   `clearhead archive actions --file <filename>`
+
+The sweep moves only fully closed root trees, preserving their links, states,
+dates, and sidecar entries. A closed child stays in place until its entire root
+tree is closed. `clearhead archive action <id>` selects one eligible root;
+it refuses a non-root (naming the root), or any tree with an open member.
 
 Core commits the active and completed files as one durable workspace mutation.
 The plugin reloads the buffer only after the CLI exits successfully.
@@ -518,6 +543,22 @@ CLI mutation and reloads before accepting more edits, preventing an old buffer
 from resurrecting archived lines. It deliberately ignores `.completed.actions`
 and `.upcoming.actions` files. The LSP itself never archives on save and exposes
 no archive command; the Neovim client owns this opt-in orchestration.
+
+Moving from Stage 2 → Stage 1 (unarchive) ~
+
+Use `:Clearhead unarchive action <id>` to move a whole archived root tree back.
+Plain unarchive preserves all states and dates. `--reopen` reopens just the
+root; add `--cascade` as well to reopen all closed descendants and clear their
+dates. Open members keep their state. A child cannot move on its own: Core
+refuses and names its root. `--cascade` without `--reopen` is a usage error.
+
+With `nvim_archive_on_save = true`, plain unarchive holds only until the next
+save of the active file, even if the edit is elsewhere. This sweep-back is by
+design, not an exception to the hook: the fully closed tree is archived again
+with its states, dates, links, and sidecar entries intact. Reopen the root
+before saving, or use `--reopen`, to keep it active. An open root over closed
+children may draw the normal W003 warning. The unarchive command itself never
+saves, so it does not immediately sweep the tree back.
 
 Moving from Stage 2 → Stage 3 (charter archive) ~
 
@@ -576,7 +617,7 @@ State manipulation ~
 
   `<localleader><space>`   Cycle state: [ ] → [-] → [=] → [x] → [_] → [ ]
   `<localleader>x`         Set Completed  `[x]` + appends `%timestamp`
-  `<localleader>X`         Recursively complete action and all children
+  `<localleader>X`         Complete target and open descendants; keep closed members
   `<localleader>-`         Set state to In Progress  `[-]`
   `<localleader>=`         Set state to Blocked      `[=]`
   `<localleader>_`         Set state to Cancelled    `[_]`
@@ -613,8 +654,8 @@ These commands are always available regardless of the current filetype.
                                                          *:Clearhead*
 :Clearhead {verb} {noun} [args]
     The single entry point. The grammar is verb then noun, mirroring the
-    `clearhead` CLI wherever a verb exists there (`add`, `archive`, `debug`,
-    `jot`, `query`);
+    `clearhead` CLI wherever a verb exists there (`add`, `archive`, `unarchive`,
+    `debug`, `jot`, `query`);
     `open` and `pick` are editor-only. Every level tab-completes.
 
     Verb      Noun        Does
@@ -625,6 +666,7 @@ These commands are always available regardless of the current filetype.
     `pick`    `actions`   |:Clearhead-pick|
     `pick`    `charters`  |:Clearhead-pick|
     `archive` `charter`   |:Clearhead-archive|
+    `unarchive` `action`  |:Clearhead-unarchive|
     `query`   `show`      |:Clearhead-query|
     `jot`                 |:Clearhead-jot|
     `debug`               |:Clearhead-debug|
@@ -679,6 +721,22 @@ These commands are always available regardless of the current filetype.
     Archive all charters whose frontmatter carries `state: Closed` in
     a single pass (`clearhead archive charter --closed`). Equivalent to
     `require("clearhead").archive_workspace()`.
+
+                                                *:Clearhead-unarchive*
+:Clearhead unarchive action {target} [--reopen] [--cascade] [CLI options]
+    Move a whole archived root tree back to its active file via Core v0.4.0+.
+    {target} is an id, prefix, alias, or name. Pass all words after `action`
+    to the CLI unchanged, including `--charter`, `--file` (the active sibling),
+    `--workspace`, and `--dry-run`. Core validates the root and the flags.
+    Plain unarchive changes no states; `--reopen` opens only the root;
+    `--reopen --cascade` opens closed descendants too. See the save-time
+    sweep-back in |clearhead-tut-archive|.
+
+    Runs synchronously in the current buffer's workspace (else current cwd).
+    Refuses while any loaded `.actions` buffer has unsaved changes, so neither
+    the source nor destination can be overwritten by a stale buffer. Refreshes
+    clean buffers after success without saving. CLI errors are shown as-is.
+    Equivalent to `require("clearhead").unarchive({ "target", "--reopen" })`.
 
                                                       *:Clearhead-jot*
 :Clearhead jot [--charter {charter}] {text}
@@ -938,8 +996,14 @@ current window.
 
                                            *clearhead.set_state_tree()*
 `set_state_tree(bufnr, linenr, state)`
-    Set the state on `linenr` and recursively on all child actions that
-    fall within the same action node. Useful for closing a whole subtree.
+    Set the target on `linenr` and its descendants in the same action node.
+    For `"x"` or `"_"`, only open descendants change; already-closed members
+    keep state and date, including cancelled members under a complete target.
+    Open grandchildren below closed members are still reached. The target is
+    forced, with a fresh date when its state changes; a target already in the
+    requested state keeps its date. Both close states stamp completion dates.
+    Nonterminal state requests retain the recursive state-editing behavior.
+    This edits the buffer only; saving may archive if the opt-in hook is on.
 
                                            *clearhead.smart_new_action()*
 `smart_new_action(bufnr, linenr)`

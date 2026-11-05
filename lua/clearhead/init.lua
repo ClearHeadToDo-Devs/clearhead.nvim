@@ -415,7 +415,7 @@ local function set_action_mappings(bufnr)
 	end, "Set state to Completed")
 	map("<localleader>X", function()
 		M.set_state_tree(0, vim.fn.line(".") - 1, "x")
-	end, "Close action and all children")
+	end, "Complete target and open descendants")
 	map("<localleader>-", function()
 		M.set_state(0, vim.fn.line(".") - 1, "-")
 	end, "Set state to In Progress")
@@ -611,6 +611,37 @@ M.archive_saved = function(bufnr)
 			vim.cmd("silent edit!")
 		end)
 	end
+end
+
+--- Move an archived root tree back via Core, forwarding action arguments.
+--- Synchronous so no edits can race the move; never save (and sweep) here.
+M.unarchive = function(args)
+	local bin = config.get_bin_path()
+	if not bin then
+		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
+		return
+	end
+	-- Explicit targets and CLI scopes can select either file in any workspace.
+	-- Require clean action buffers so neither half of the move can be lost.
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		local path = vim.api.nvim_buf_get_name(buf)
+		if vim.api.nvim_buf_is_loaded(buf) and path:match("%.actions$") and vim.bo[buf].modified then
+			vim.notify("clearhead: save " .. path .. " first.", vim.log.levels.WARN)
+			return
+		end
+	end
+	local path = vim.api.nvim_buf_get_name(0)
+	local cmd = vim.list_extend({ bin, "unarchive", "action" }, args or {})
+	local result = vim.system(cmd, { cwd = project_root_for_path(path) or vim.fn.getcwd(), text = true }):wait()
+	if result.code ~= 0 then
+		vim.notify("Unarchive failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+		return
+	end
+	-- Reload clean buffers without writing: plain unarchive must not trigger
+	-- archive-on-save until the user actually saves the active file again.
+	vim.cmd("silent! checktime")
+	vim.notify(vim.trim(result.stdout or ""))
+	return true
 end
 
 M.archive = function(bufnr)
