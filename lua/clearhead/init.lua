@@ -341,9 +341,23 @@ end
 
 local function live_action_file(path)
 	local role = action_file_role(path)
-	-- Absolute live resources belong under charters/. Everything beneath that
-	-- root is ordinary, including directories named archive or templates.
-	return role == "actions" and (not path:match("/") or path:match("/charters/") ~= nil)
+	if role ~= "actions" then return false end
+	if not path:match("/") then return true end
+
+	-- Discover project .clearhead roots exactly as the pickers do. Bare/user
+	-- workspaces come from configured roots, not a directory-name substring.
+	local roots, seen = {}, {}
+	collect_ancestor_workspaces(path, roots, seen, {}, {})
+	add_workspace_root(roots, seen, config.values.data_dir)
+	for _, root in ipairs(config.values.additional_workspaces or {}) do
+		add_workspace_root(roots, seen, root)
+	end
+	local absolute = vim.fn.fnamemodify(path, ":p")
+	for _, root in ipairs(roots) do
+		local prefix = vim.fn.fnamemodify(root.charters, ":p"):gsub("/$", "") .. "/"
+		if absolute:sub(1, #prefix) == prefix then return true end
+	end
+	return false
 end
 
 --- Derive a human-readable charter name from a file path inside charters/.
