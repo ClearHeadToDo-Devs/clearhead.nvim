@@ -137,7 +137,7 @@ M.set_state = function(bufnr, linenr, state)
 	end
 end
 
---- Set the action state on the given line AND all of its children.
+--- Set the target state, closing open descendants without overwriting closed ones.
 --- bufnr: buffer number (0 = current)
 --- linenr: 0-indexed line number of the parent action
 --- state: one of " ", "-", "=", "x", "_"
@@ -148,26 +148,41 @@ M.set_state_tree = function(bufnr, linenr, state)
 		return
 	end
 
-	local root = actions_root(bufnr)
-	if not root then
-		return
-	end
-
-	-- The action node's range spans the entire subtree (parent + all children).
+	-- Query the already-parsed subtree, walking through closed members too.
 	local srow, _, erow, _ = action_node:range()
-
-	local query = vim.treesitter.query.parse("actions", M.STATE_QUERY)
-	local changes = {}
-	for _, node in query:iter_captures(root, bufnr, srow, erow + 1) do
+	local closing = state == "x" or state == "_"
+	local query = vim.treesitter.query.parse("actions", M.STATE_QUERY .. "\n(completed_date) @date")
+	local changes, dates = {}, {}
+	for capture, node in query:iter_captures(action_node, bufnr, srow, erow + 1) do
 		local ns, nc, _, nec = node:range()
-		table.insert(changes, { row = ns, scol = nc, ecol = nec })
+		if query.captures[capture] == "date" then
+			dates[ns] = { scol = nc, ecol = nec }
+		else
+			local current = vim.treesitter.get_node_text(node, bufnr)
+			local closed = current == "x" or current == "_"
+			if current ~= state and (not closing or ns == srow or not closed) then
+				table.insert(changes, { row = ns, scol = nc, ecol = nec })
+			end
+		end
 	end
 
 	-- All state values are single characters — no position shifts between edits.
 	for _, c in ipairs(changes) do
 		vim.api.nvim_buf_set_text(bufnr, c.row, c.scol, c.row, c.ecol, { state })
-		if state == "x" then
-			maybe_add_completion_date(bufnr, c.row)
+		if closing then
+			-- A forced target changing closed state gets a fresh date, just as
+			-- an open member does. Unchanged closed actions never enter changes.
+			local date = dates[c.row]
+			if date then
+				vim.api.nvim_buf_set_text(bufnr, c.row, date.scol, c.row, date.ecol, {
+					"%" .. vim.fn.strftime("%Y-%m-%dT%H:%M"),
+				})
+			else
+				local line = vim.api.nvim_buf_get_lines(bufnr, c.row, c.row + 1, false)[1]
+				vim.api.nvim_buf_set_text(bufnr, c.row, #line, c.row, #line, {
+					" %" .. vim.fn.strftime("%Y-%m-%dT%H:%M"),
+				})
+			end
 		end
 	end
 end
