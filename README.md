@@ -105,6 +105,15 @@ Use `:Clearhead unarchive action <id>` to move a whole archived root tree back w
 
 **Archive-on-save is unchanged:** off by default. With `nvim_archive_on_save = true`, a plain unarchive holds only until the next save of that active file, even if the edit is elsewhere. The fully closed tree is swept back by design, preserving states, dates, and links. Reopen the root before saving (or use `--reopen`) to keep it active. Reopening only the root can produce the normal W003 warning over its still-closed children. Reopening an archived action directly is refused: unarchive its root first.
 
+### Habit files
+
+`<charter>.habits.actions` (or `next.habits.actions` for root/directory charters)
+shares the charter's syntax, navigation stem and formatting support. Habit
+roots and their template children are not live Actions: the active-file picker
+excludes them and archive-on-save never sweeps their lines. Explicit archival
+from a habits buffer routes to **archive charter**, moving the habits file with
+its charter rather than treating its children as executable work.
+
 ## Documentation
 
 Full reference and tutorial in the built-in help:
