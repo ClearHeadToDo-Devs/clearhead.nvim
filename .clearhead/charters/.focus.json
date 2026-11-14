@@ -1,0 +1,14 @@
+{
+  "$schema": "https://clearhead.dev/schemas/v0.5.0/charter_metadata.schema.json",
+  "actions": {
+    "01a1d8dd-c465-7c33-9c89-76fa6fed93d2": {
+      "created": "2026-11-14T07:02:54.821Z"
+    },
+    "01a1d8e9-7feb-7253-acb6-9ce38afbbe4a": {
+      "created": "2026-11-14T07:15:43.723Z"
+    },
+    "01a1d8ec-2752-7db0-9162-a5490779e647": {
+      "created": "2026-11-14T07:18:37.650Z"
+    }
+  }
+}
