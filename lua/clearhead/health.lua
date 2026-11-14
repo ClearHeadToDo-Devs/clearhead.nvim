@@ -196,24 +196,6 @@ local check_config = function()
 	end
 end
 
-local check_pomodoro_cli = function()
-	vim.health.start("clearhead: Pomodoro CLI")
-	local bin = vim.fn.executable("pomodoro") == 1
-	if not bin then
-		vim.health.warn(
-			"Pomodoro CLI not found",
-			"Install open-pomodoro/openpomodoro-cli or set pomodoro_binary_path in setup()"
-		)
-	else
-		local version = vim.fn.system({ "pomodoro", "--version" }):gsub("%s+$", "")
-		if vim.v.shell_error == 0 then
-			vim.health.ok(version .. " (pomodoro CLI)")
-		else
-			vim.health.warn("Pomodoro CLI found but --version failed", "Check your pomodoro installation")
-		end
-	end
-end
-
 -- =============================================================================
 -- Public API
 -- =============================================================================
@@ -224,7 +206,6 @@ M.check = function()
 	local cli_output = check_cli()
 	check_treesitter(cli_output)
 	check_config()
-	check_pomodoro_cli()
 end
 
 M._testing = {
