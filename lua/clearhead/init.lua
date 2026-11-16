@@ -405,69 +405,6 @@ local function find_charter_files(charters_root, predicate)
 	return files
 end
 
-local function set_charter_mappings(bufnr)
-	local function map(key, fn, desc)
-		vim.keymap.set("n", key, fn, { buffer = bufnr, desc = desc })
-	end
-
-	map("<localleader>A", M.archive_charter, "Archive current charter")
-	map("<localleader>C", M.close_charter, "Close current charter")
-	map("<localleader>i", function()
-		M.open_inbox(0)
-	end, "Open default capture file")
-	map("<localleader>q", M.open_quick_add, "Quick-add actions to the capture file")
-	map("<localleader>p", function()
-		M.open_workspace(0)
-	end, "Browse workspace")
-	map("<localleader>P", function()
-		M.open_project_root(0)
-	end, "Open project root")
-	map("<localleader>s", M.pick_action_file, "Pick active action file")
-	map("<localleader>S", M.pick_charter_doc, "Pick charter document")
-end
-
-local function set_action_mappings(bufnr)
-	local function map(key, fn, desc)
-		vim.keymap.set("n", key, fn, { buffer = bufnr, desc = desc })
-	end
-
-	-- State manipulation — closures supply current buffer/cursor at call time.
-	map("<localleader><space>", function()
-		M.cycle_state(0, vim.fn.line(".") - 1)
-	end, "Cycle action state")
-	map("<localleader>x", function()
-		M.set_state(0, vim.fn.line(".") - 1, "x")
-	end, "Set state to Completed")
-	map("<localleader>X", function()
-		M.set_state_tree(0, vim.fn.line(".") - 1, "x")
-	end, "Complete target and open descendants")
-	map("<localleader>-", function()
-		M.set_state(0, vim.fn.line(".") - 1, "-")
-	end, "Set state to In Progress")
-	map("<localleader>=", function()
-		M.set_state(0, vim.fn.line(".") - 1, "=")
-	end, "Set state to Blocked")
-	map("<localleader>_", function()
-		M.set_state(0, vim.fn.line(".") - 1, "_")
-	end, "Set state to Cancelled")
-	map("<localleader><bs>", function()
-		M.set_state(0, vim.fn.line(".") - 1, " ")
-	end, "Set state to Not Started")
-	-- File operations
-	map("<localleader>f", M.format, "Format action file")
-	map("<localleader>a", M.archive, "Archive completed actions")
-	map("<localleader>o", function()
-		M.smart_new_action(0, vim.fn.line(".") - 1)
-	end, "New action below")
-	map(">>", function()
-		M.indent_action(0, vim.fn.line(".") - 1)
-	end, "Increase action depth")
-	map("<<", function()
-		M.dedent_action(0, vim.fn.line(".") - 1)
-	end, "Decrease action depth")
-	set_charter_mappings(bufnr)
-end
-
 -- ---------------------------------------------------------------------------
 -- Setup / bootstrap
 -- ---------------------------------------------------------------------------
@@ -527,28 +464,7 @@ M._plugin_init = function()
 		end,
 	})
 
-	-- Living-loop mappings in quickfix windows. The functions verify the list
-	-- is a clearhead view before acting, so foreign quickfix lists just warn.
-	vim.api.nvim_create_autocmd("FileType", {
-		pattern = "qf",
-		group = group,
-		callback = function(args)
-			if not config.values.nvim_default_mappings then
-				return
-			end
-			local function map(key, fn, desc)
-				vim.keymap.set("n", key, fn, { buffer = args.buf, desc = desc })
-			end
-			map("<localleader>x", function()
-				M.act_on_entry("complete")
-			end, "Complete action under cursor")
-			map("<localleader>_", function()
-				M.act_on_entry("cancel")
-			end, "Cancel action under cursor")
-			map("<localleader>r", M.refresh_view, "Refresh clearhead view")
-		end,
-	})
-
+	require("clearhead.mappings").define()
 	require("clearhead.command").register()
 
 	bootstrap_done = true
@@ -576,7 +492,9 @@ M._setup_actions_buffer = function(bufnr)
 	end)
 
 	if config.values.nvim_default_mappings then
-		set_action_mappings(bufnr)
+		local mappings = require("clearhead.mappings")
+		mappings.apply_defaults(bufnr, mappings.actions)
+		mappings.apply_defaults(bufnr, mappings.charter)
 	end
 
 	vim.b[bufnr].clearhead_actions_initialized = true
@@ -594,7 +512,8 @@ M._setup_markdown_buffer = function(bufnr)
 
 	local path = vim.api.nvim_buf_get_name(bufnr)
 	if charter_workspace_root(path) then
-		set_charter_mappings(bufnr)
+		local mappings = require("clearhead.mappings")
+		mappings.apply_defaults(bufnr, mappings.charter)
 		vim.b[bufnr].clearhead_markdown_initialized = true
 	end
 end
@@ -923,16 +842,13 @@ M.open_workspace = function(winnr)
 	set_window_cwd(winnr, root)
 end
 
---- Walk upward from the current buffer's directory to find the nearest
---- .clearhead/ subdirectory, then open next.actions inside it.
+--- Walk upward from the window's working directory to find the nearest
+--- .clearhead/ subdirectory, then open next.actions inside it. The cwd, not
+--- the buffer path, so it works from oil, terminal and scratch buffers.
 --- Falls back to open_inbox if no project root is found.
 --- winnr: window handle (0 = current window)
 M.open_project_root = function(winnr)
-	local buf_path =
-		vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(winnr == 0 and vim.api.nvim_get_current_win() or winnr))
-	local start_dir = buf_path ~= "" and vim.fn.fnamemodify(buf_path, ":h") or vim.fn.getcwd()
-
-	local dir = start_dir
+	local dir = vim.fn.getcwd(winnr)
 	while true do
 		local candidate = dir .. "/.clearhead"
 		local stat = vim.uv.fs_stat(candidate)

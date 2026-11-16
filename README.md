@@ -85,6 +85,16 @@ The navigation commands (`:Clearhead open root|project|workspace`) and the picke
 
 `nvim_root_on_navigate` controls how: `"lcd"` (default, window-local — never disturbs other windows), `"tcd"` (tab-local), `"cd"` (global), or `false` to leave the working directory entirely alone. Even when disabled, `require("clearhead").workspace_root(path)` still exposes the resolver so you can wire your own cwd policy.
 
+### Keymaps
+
+Every keymap is a `<Plug>(clearhead-*)` mapping, and the `<localleader>` defaults are buffer-local maps onto those names. To change a key, map its `<Plug>` yourself; that default is then skipped and the others stay:
+
+```lua
+vim.keymap.set("n", "<localleader>c", "<Plug>(clearhead-complete)")
+```
+
+The full list is in `:h clearhead-mappings`.
+
 ### Charter markdown mappings
 
 When you open a charter markdown file (`charters/*.md` or `charters/**/README.md`), charter-scoped mappings are available there too, including:

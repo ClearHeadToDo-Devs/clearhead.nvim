@@ -6,6 +6,7 @@
 :Clearhead-open	clearhead.txt	/*:Clearhead-open*
 :Clearhead-pick	clearhead.txt	/*:Clearhead-pick*
 :Clearhead-query	clearhead.txt	/*:Clearhead-query*
+:Clearhead-unarchive	clearhead.txt	/*:Clearhead-unarchive*
 clearhead	clearhead.txt	/*clearhead*
 clearhead-api	clearhead.txt	/*clearhead-api*
 clearhead-commands	clearhead.txt	/*clearhead-commands*

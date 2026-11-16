@@ -469,7 +469,8 @@ Create a project workspace: >sh
   mkdir -p my-project/.clearhead/charters
   touch my-project/.clearhead/charters/next.actions
 <
-Open the project root from any buffer inside the project: >vim
+Open the project's actions from anywhere the editor's working directory is
+inside the project: >vim
 
   <localleader>P
 <
@@ -477,8 +478,8 @@ or >vim
 
   :Clearhead open project
 <
-The plugin walks upward from the current file's directory until it finds
-`.clearhead/`, then opens `charters/next.actions`. If none is found, it
+The plugin walks upward from the window's working directory (|getcwd()|)
+until it finds `.clearhead/`, then opens `charters/next.actions`. If none is found, it
 falls back to the default capture file.
 
 The `<localleader>s` / `<localleader>S` pickers include the global
@@ -599,12 +600,24 @@ Quick reference ~
 ==============================================================================
 6. KEYBINDINGS                                            *clearhead-mappings*
 
-All mappings are buffer-local. Action-editing mappings are only active in
-`.actions` files; charter-scoped navigation/archive mappings also activate in
-charter markdown files under `charters/`.
-Requires `nvim_default_mappings = true` (default).
+Every clearhead keymap is a |<Plug>| mapping named `<Plug>(clearhead-*)`.
+Those names are the stable interface; the keys below are defaults mapped
+onto them.
 
-Disable with: >lua
+Defaults are buffer-local. Action-editing keys are only active in `.actions`
+files; charter-scoped keys are also active in charter markdown files under
+`charters/`. Quickfix entries get no default keys (see
+|clearhead-living-loop|).
+
+Change one key: map its `<Plug>` name yourself. Clearhead then skips that
+default (it checks |hasmapto()|) and keeps all the others: >lua
+
+  vim.keymap.set("n", "<localleader>c", "<Plug>(clearhead-complete)")
+<
+Action edits warn and do nothing outside an `.actions` buffer, so a global
+mapping like this is safe.
+
+Turn off every default key and map only what you want: >lua
 
   require("clearhead").setup({ nvim_default_mappings = false })
 <
@@ -615,36 +628,47 @@ Disable with: >lua
 
 State manipulation ~
 
-  `<localleader><space>`   Cycle state: [ ] → [-] → [=] → [x] → [_] → [ ]
-  `<localleader>x`         Set Completed  `[x]` + appends `%timestamp`
-  `<localleader>X`         Complete target and open descendants; keep closed members
-  `<localleader>-`         Set state to In Progress  `[-]`
-  `<localleader>=`         Set state to Blocked      `[=]`
-  `<localleader>_`         Set state to Cancelled    `[_]`
-  `<localleader><bs>`      Reset state to Not Started `[ ]`
+  Key                     <Plug>(clearhead-…)  Does
+  `<localleader><space>`  `cycle-state`        Cycle: [ ] → [-] → [=] → [x] → [_] → [ ]
+  `<localleader>x`        `complete`           Set Completed `[x]` + `%timestamp`
+  `<localleader>X`        `complete-tree`      Complete target and open descendants;
+                                             keep closed members
+  `<localleader>-`        `in-progress`        Set In Progress `[-]`
+  `<localleader>=`        `blocked`            Set Blocked `[=]`
+  `<localleader>_`        `cancel`             Set Cancelled `[_]`
+  `<localleader><bs>`     `reset`              Reset to Not Started `[ ]`
 
 File operations ~
 
-  `<localleader>f`   Format and normalise (LSP first; CLI normalize fallback)
-  `<localleader>a`   Archive completed/cancelled actions out of current
-                     file to `.completed.actions` (redirects to charter
-                     archive when in a `.completed.actions` buffer;
-                     requires `state: Closed` for that path)
-  `<localleader>A`   Move the whole current charter under `archive/`
-                     (requires `state: Closed` in charter frontmatter)
-  `<localleader>C`   Close the current charter
-  `<localleader>o`   Insert new `[ ]` below current line at same depth
-  `>>`               Increase depth of action on current line (add `>`)
-  `<<`               Decrease depth of action on current line (remove `>`)
+  `<localleader>f`        `format`             Format and normalise (LSP first;
+                                             CLI normalize fallback)
+  `<localleader>a`        `archive`            Archive completed/cancelled actions to
+                                             `.completed.actions` (redirects to
+                                             charter archive in a
+                                             `.completed.actions` buffer; requires
+                                             `state: Closed` for that path)
+  `<localleader>o`        `new-action`         New `[ ]` below at the same depth
+  `>>`                    `indent`             Increase depth (add `>`)
+  `<<`                    `dedent`             Decrease depth (remove `>`)
 
-Navigation ~
+Charter and navigation ~
 
-  `<localleader>i`   Open the default capture file
-  `<localleader>q`   Quick-add an indented action outline to the capture file
-  `<localleader>p`   Open workspace data directory (netrw / oil.nvim / etc.)
-  `<localleader>P`   Walk up to nearest `.clearhead/`, open `next.actions`
-  `<localleader>s`   Picker: active action files across all visible workspaces
-  `<localleader>S`   Picker: markdown charter documents across all visible workspaces
+  `<localleader>A`        `archive-charter`    Move the current charter under
+                                             `archive/` (requires `state: Closed`)
+  `<localleader>C`        `close-charter`      Close the current charter
+  `<localleader>i`        `open-inbox`         Open the default capture file
+  `<localleader>q`        `quick-add`          Quick-add an outline to the capture file
+  `<localleader>p`        `open-workspace`     Open the workspace data directory
+  `<localleader>P`        `open-project`       Walk up from the cwd to `.clearhead/`,
+                                             open `next.actions`
+  `<localleader>s`        `pick-actions`       Picker: active action files
+  `<localleader>S`        `pick-charters`      Picker: charter documents
+
+Quickfix (no default keys) ~
+
+  `entry-complete`   Complete the action under the cursor
+  `entry-cancel`     Cancel the action under the cursor
+  `refresh-view`     Re-run the view's query, rebuild the list
 
 ==============================================================================
 7. COMMANDS                                              *clearhead-commands*
@@ -692,8 +716,8 @@ These commands are always available regardless of the current filetype.
     current window. Equivalent to `<localleader>i`.
 
 :Clearhead open project
-    Walk upward from the current buffer to find the nearest `.clearhead/`
-    directory, then open `charters/next.actions` inside it.
+    Walk upward from the window's working directory to find the nearest
+    `.clearhead/` directory, then open `charters/next.actions` inside it.
     Falls back to `open root` if no `.clearhead/` is found.
     Equivalent to `<localleader>P`.
 
@@ -842,12 +866,23 @@ These commands are always available regardless of the current filetype.
 
     The living loop ~
                                                     *clearhead-living-loop*
-    Inside the quickfix window, with `nvim_default_mappings` enabled, the
-    view is alive — read → verb-by-id → re-read:
+    Inside the quickfix window the view is alive — read → verb-by-id →
+    re-read. Quickfix is not clearhead's filetype, so these have no default
+    keys; map them in a `FileType qf` autocmd: >lua
 
-      `<localleader>x`   Complete the action under the cursor
-      `<localleader>_`   Cancel the action under the cursor
-      `<localleader>r`   Re-run the view's query, rebuild the list
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "qf",
+        callback = function(ev)
+          local function map(lhs, name)
+            vim.keymap.set("n", lhs, "<Plug>(clearhead-" .. name .. ")",
+              { buffer = ev.buf })
+          end
+          map("<localleader>x", "entry-complete")
+          map("<localleader>_", "entry-cancel")
+          map("<localleader>r", "refresh-view")
+        end,
+      })
+<
 
     A verb addresses the entry's canonical id (never its line number), so
     it acts on exactly that action even after the file shifted. After the
@@ -1129,7 +1164,7 @@ current window.
 
                                             *clearhead.open_project_root()*
 `open_project_root(winnr)`
-    Walk upward from the buffer in `winnr` to find the nearest
+    Walk upward from the working directory of `winnr` to find the nearest
     `.clearhead/`, then open `charters/next.actions` inside it.
     Falls back to |clearhead.open_inbox()| if none is found.
 
