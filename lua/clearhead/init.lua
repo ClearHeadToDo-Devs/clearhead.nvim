@@ -663,10 +663,10 @@ M.close_charter = function(opts)
 	run_charter_cmd(cmd, "Charter closed.", "Close charter", project_root_for_path(buf_path))
 end
 
---- Jot a timestamped line into a charter's `## Log` via `clearhead jot`.
---- The charter is opts.charter, else the current buffer's charter when the
---- buffer is a charter file, else the CLI's own default (the sole charter).
---- The CLI's reply names the charter it wrote to, and is shown as-is.
+--- Jot a note on a charter via `clearhead jot charter`. The charter is
+--- opts.charter, else the current buffer's charter when the buffer is a
+--- charter file. The note goes to the charter's sidecar, never its document.
+--- The CLI's reply names where it wrote, and is shown as-is.
 M.jot = function(text, opts)
 	opts = opts or {}
 	local bin = config.get_bin_path()
@@ -674,20 +674,14 @@ M.jot = function(text, opts)
 		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
 		return
 	end
-	local buf = vim.api.nvim_get_current_buf()
-	local path = vim.api.nvim_buf_get_name(buf)
+	local path = vim.api.nvim_buf_get_name(0)
 	local in_charter = workspace_root_for_charter_path(path) ~= nil
-	-- The CLI writes the charter's .md on disk; an unsaved one would diverge.
-	if in_charter and path:match("%.md$") and vim.bo[buf].modified then
-		vim.notify("clearhead: save " .. path .. " first.", vim.log.levels.WARN)
+	local charter = opts.charter or (in_charter and charter_stem(path)) or nil
+	if not charter then
+		vim.notify("clearhead: name a charter to jot on, or jot from a charter file.", vim.log.levels.WARN)
 		return
 	end
-	local charter = opts.charter or (in_charter and charter_stem(path)) or nil
-	local cmd = { bin, "jot" }
-	if charter then
-		vim.list_extend(cmd, { "--charter", charter })
-	end
-	vim.list_extend(cmd, { "--", text })
+	local cmd = { bin, "jot", "charter", charter, "--", text }
 	local cwd = in_charter and project_root_for_path(path) or vim.fn.getcwd()
 	vim.system(cmd, { cwd = cwd, text = true }, function(done)
 		vim.schedule(function()

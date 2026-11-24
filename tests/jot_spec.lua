@@ -7,7 +7,7 @@ local config = require("clearhead.config")
 local FAKE_CLI = [[#!/bin/sh
 printf '%s\n' "$@" > "$0.args"
 pwd > "$0.cwd"
-echo "Jotted to 'Work' (work.md)"
+echo "Jotted to 019f733d-45c2-7dd2-91dc-8631f33c6b77 (charters/.work.json)"
 ]]
 
 describe("clearhead.jot", function()
@@ -51,32 +51,29 @@ describe("clearhead.jot", function()
 		vim.cmd("edit " .. vim.fn.fnameescape(root .. "/.clearhead/charters/work.actions"))
 		clearhead.jot("--looks like a flag")
 
-		assert.are.same({ "jot", "--charter", "work", "--", "--looks like a flag" }, lines(".args"))
+		assert.are.same({ "jot", "charter", "work", "--", "--looks like a flag" }, lines(".args"))
 		assert.are.same({ root }, lines(".cwd"))
 		vim.wait(2000, function()
 			return #notified > 0
 		end)
-		assert.are.same({ "Jotted to 'Work' (work.md)" }, notified)
+		assert.are.same({ "Jotted to 019f733d-45c2-7dd2-91dc-8631f33c6b77 (charters/.work.json)" }, notified)
 	end)
 
-	it("lets an explicit charter win, and leaves it to the CLI outside a charter", function()
+	it("lets an explicit charter win, and refuses outside a charter without one", function()
 		vim.cmd("edit " .. vim.fn.fnameescape(root .. "/.clearhead/charters/work.actions"))
 		clearhead.jot("note", { charter = "other" })
-		assert.are.same({ "jot", "--charter", "other", "--", "note" }, lines(".args"))
+		assert.are.same({ "jot", "charter", "other", "--", "note" }, lines(".args"))
+		vim.wait(2000, function()
+			return #notified > 0
+		end)
 
+		notified = {}
 		vim.fn.delete(script .. ".args")
 		vim.cmd("enew")
 		clearhead.jot("note")
-		assert.are.same({ "jot", "--", "note" }, lines(".args"))
-	end)
-
-	it("refuses to write under an unsaved charter document", function()
-		vim.cmd("edit " .. vim.fn.fnameescape(root .. "/.clearhead/charters/work.md"))
-		vim.api.nvim_buf_set_lines(0, -1, -1, false, { "unsaved" })
-		clearhead.jot("note")
-
 		vim.wait(200)
 		assert.are.equal(0, vim.fn.filereadable(script .. ".args"))
-		assert.is_truthy(notified[1]:find("save", 1, true))
+		assert.are.equal(1, #notified)
+		assert.is_truthy(notified[1]:find("name a charter", 1, true))
 	end)
 end)

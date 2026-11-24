@@ -87,8 +87,7 @@ local show = {
 	end,
 }
 
---- `jot [--charter <charter>] <text...>`: a timestamped line in a charter's
---- log. `--charter` may sit anywhere; the other words are the text. With no
+--- `jot [--charter <charter>] <text...>`: a note on a charter. `--charter` may sit anywhere; the other words are the text. With no
 --- text it prompts, so the bare command can be bound to a key.
 local jot = {
 	run = function(args)

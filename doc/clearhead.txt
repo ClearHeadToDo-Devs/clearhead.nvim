@@ -764,13 +764,12 @@ These commands are always available regardless of the current filetype.
 
                                                       *:Clearhead-jot*
 :Clearhead jot [--charter {charter}] {text}
-    Record a timestamped line in a charter's `## Log`, like `clearhead jot`.
-    The charter is `--charter` (completes aliases), else the charter of the
-    current buffer when it is a charter file, else the CLI's default (the
-    sole charter when unambiguous). With no {text} it prompts, so the bare
-    command can be bound to a key. The CLI's reply, which names the charter
-    it wrote to, is shown; an open buffer for that charter reloads. Refuses
-    while the current charter document has unsaved changes.
+    Record a note on a charter, like `clearhead jot charter`. The note goes
+    to the charter's sidecar; the document is never edited. The charter is
+    `--charter` (completes aliases), else the charter of the current buffer
+    when it is a charter file; with neither it warns and writes nothing.
+    With no {text} it prompts, so the bare command can be bound to a key.
+    The CLI's reply, which names where it wrote, is shown.
 
                                                     *:Clearhead-debug*
 :Clearhead debug
@@ -1076,9 +1075,9 @@ current window.
 
                                                        *clearhead.jot()*
 `jot({text}, {opts})`
-    Jot `text` into a charter's log; the Lua entry point behind
+    Jot `text` as a note on a charter; the Lua entry point behind
     |:Clearhead-jot|. `opts.charter` (string|nil) names the charter; nil
-    uses the current buffer's charter, then the CLI's default.
+    uses the current buffer's charter, and warns when there is none.
 
                                            *clearhead.archive_charter()*
 `archive_charter([{opts}])`
