@@ -6,6 +6,7 @@
 :Clearhead-open	clearhead.txt	/*:Clearhead-open*
 :Clearhead-pick	clearhead.txt	/*:Clearhead-pick*
 :Clearhead-query	clearhead.txt	/*:Clearhead-query*
+:Clearhead-show	clearhead.txt	/*:Clearhead-show*
 :Clearhead-unarchive	clearhead.txt	/*:Clearhead-unarchive*
 clearhead	clearhead.txt	/*clearhead*
 clearhead-api	clearhead.txt	/*clearhead-api*
@@ -45,6 +46,7 @@ clearhead.get_conform_opts()	clearhead.txt	/*clearhead.get_conform_opts()*
 clearhead.get_status()	clearhead.txt	/*clearhead.get_status()*
 clearhead.indent_action()	clearhead.txt	/*clearhead.indent_action()*
 clearhead.jot()	clearhead.txt	/*clearhead.jot()*
+clearhead.jot_action()	clearhead.txt	/*clearhead.jot_action()*
 clearhead.normalize()	clearhead.txt	/*clearhead.normalize()*
 clearhead.open_cli_output()	clearhead.txt	/*clearhead.open_cli_output()*
 clearhead.open_graph()	clearhead.txt	/*clearhead.open_graph()*

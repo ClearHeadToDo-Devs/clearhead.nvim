@@ -21,6 +21,13 @@ describe("clearhead.jot", function()
 		return vim.fn.readfile(script .. suffix)
 	end
 
+	-- Wait for the CLI's reply, so it never lands in the next test.
+	local function settle()
+		vim.wait(2000, function()
+			return #notified > 0
+		end)
+	end
+
 	before_each(function()
 		root = vim.uv.fs_realpath(vim.fn.tempname():match("^(.*)/")) .. "/jot-" .. vim.fn.localtime() .. math.random(1e6)
 		vim.fn.mkdir(root .. "/.clearhead/charters", "p")
@@ -57,6 +64,66 @@ describe("clearhead.jot", function()
 			return #notified > 0
 		end)
 		assert.are.same({ "Jotted to 019f733d-45c2-7dd2-91dc-8631f33c6b77 (charters/.work.json)" }, notified)
+	end)
+
+	it("jots on the charter from its document as from its actions file", function()
+		vim.cmd("edit " .. vim.fn.fnameescape(root .. "/.clearhead/charters/work.md"))
+		clearhead.jot("from the document")
+		assert.are.same({ "jot", "charter", "work", "--", "from the document" }, lines(".args"))
+		assert.are.same({ root }, lines(".cwd"))
+		settle()
+	end)
+
+	it("asks for the text when given none, and jots nothing on an empty answer", function()
+		vim.cmd("edit " .. vim.fn.fnameescape(root .. "/.clearhead/charters/work.actions"))
+		local answer = "   "
+		stub(vim.ui, "input", function(_, on_confirm)
+			on_confirm(answer)
+		end)
+		clearhead.jot()
+		vim.wait(200)
+		assert.are.equal(0, vim.fn.filereadable(script .. ".args"))
+
+		answer = "typed"
+		clearhead.jot()
+		vim.ui.input:revert()
+		assert.are.same({ "jot", "charter", "work", "--", "typed" }, lines(".args"))
+		settle()
+	end)
+
+	describe("on the action under the cursor", function()
+		local original_id
+
+		before_each(function()
+			original_id = clearhead.action_id_under_cursor
+		end)
+
+		after_each(function()
+			clearhead.action_id_under_cursor = original_id
+		end)
+
+		it("jots on its id from its workspace", function()
+			vim.cmd("edit " .. vim.fn.fnameescape(root .. "/.clearhead/charters/work.actions"))
+			clearhead.action_id_under_cursor = function()
+				return "019f733d-45c2-7dd2-91dc-8631f33c6b77"
+			end
+			clearhead.jot_action("--a note")
+			assert.are.same({ "jot", "019f733d-45c2-7dd2-91dc-8631f33c6b77", "--", "--a note" }, lines(".args"))
+			assert.are.same({ root }, lines(".cwd"))
+			settle()
+		end)
+
+		it("warns and asks for nothing when no action is under the cursor", function()
+			clearhead.action_id_under_cursor = function()
+				return nil
+			end
+			stub(vim.ui, "input")
+			clearhead.jot_action()
+			assert.stub(vim.ui.input).was_not_called()
+			vim.ui.input:revert()
+			assert.are.equal(1, #notified)
+			assert.is_truthy(notified[1]:find("no action under the cursor", 1, true))
+		end)
 	end)
 
 	it("lets an explicit charter win, and refuses outside a charter without one", function()

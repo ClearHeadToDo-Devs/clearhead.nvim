@@ -63,6 +63,9 @@ M.actions = {
 	{ "notes", "<localleader>n", "Peek at the notes of the action under the cursor", function()
 		ch().show_notes()
 	end },
+	{ "jot", "<localleader>j", "Jot a note on the action under the cursor", function()
+		ch().jot_action()
+	end },
 }
 
 M.charter = {
@@ -74,6 +77,9 @@ M.charter = {
 	end },
 	{ "charter-notes", "<localleader>N", "Peek at the current charter's notes", function()
 		ch().show_charter_notes()
+	end },
+	{ "charter-jot", "<localleader>J", "Jot a note on the current charter", function()
+		ch().jot()
 	end },
 	{ "open-inbox", "<localleader>i", "Open default capture file", function()
 		ch().open_inbox(0)

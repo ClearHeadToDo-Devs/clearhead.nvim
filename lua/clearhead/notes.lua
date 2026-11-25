@@ -76,6 +76,17 @@ local function open_float(id, lines)
 	end, { buffer = bufnr, nowait = true, desc = "Open notes in a split" })
 end
 
+--- The workspace of the action under the cursor, for running the CLI there:
+--- the current buffer's, or a quickfix entry's file's. Else the cwd.
+M.cursor_cwd = function()
+	local path = vim.api.nvim_buf_get_name(0)
+	if vim.bo.buftype == "quickfix" then
+		local entry = vim.fn.getqflist()[vim.fn.line(".")]
+		path = entry and entry.bufnr > 0 and vim.api.nvim_buf_get_name(entry.bufnr) or ""
+	end
+	return (path ~= "" and require("clearhead").workspace_root(path)) or vim.fn.getcwd()
+end
+
 --- Show the notes of `target` (an id or alias), else of the action under the
 --- cursor. `opts.split` opens the split straight away; `opts.what` names the
 --- entity in the empty message (default "action"). The CLI runs from the
@@ -93,12 +104,7 @@ M.show = function(target, opts)
 		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
 		return
 	end
-	local path = vim.api.nvim_buf_get_name(0)
-	if vim.bo.buftype == "quickfix" then
-		local entry = vim.fn.getqflist()[vim.fn.line(".")]
-		path = entry and entry.bufnr > 0 and vim.api.nvim_buf_get_name(entry.bufnr) or ""
-	end
-	local cwd = (path ~= "" and ch.workspace_root(path)) or vim.fn.getcwd()
+	local cwd = M.cursor_cwd()
 	vim.system({ bin, "show", "notes", id, "--json" }, { cwd = cwd, text = true }, function(done)
 		vim.schedule(function()
 			if done.code ~= 0 then

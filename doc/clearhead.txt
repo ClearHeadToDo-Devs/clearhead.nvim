@@ -674,6 +674,13 @@ Notes ~
   `<localleader>N`        `charter-notes`      Peek at the notes of the current
                                              charter: the charter document, or the
                                              actions file's charter. Same float.
+  `<localleader>j`        `jot`                Jot a note on the action under the
+                                             cursor (|clearhead.jot_action()|);
+                                             asks for the text. Also works on a
+                                             quickfix entry if you map it there.
+  `<localleader>J`        `charter-jot`        Jot a note on the current charter,
+                                             from its document or its actions file
+                                             (|clearhead.jot()|); asks for the text.
 
 Quickfix (no default keys) ~
 
@@ -1098,7 +1105,15 @@ current window.
 `jot({text}, {opts})`
     Jot `text` as a note on a charter; the Lua entry point behind
     |:Clearhead-jot|. `opts.charter` (string|nil) names the charter; nil
-    uses the current buffer's charter, and warns when there is none.
+    uses the current buffer's charter (its document or an actions file),
+    and warns when there is none. With no `text`, asks for it with
+    |vim.ui.input()|; an empty answer jots nothing.
+
+                                                *clearhead.jot_action()*
+`jot_action([{text}])`
+    Jot `text` as a note on the action under the cursor, or a quickfix
+    entry's action, via `clearhead jot {id}`, run from that action's
+    workspace. With no `text`, asks for it, as |clearhead.jot()| does.
 
                                            *clearhead.archive_charter()*
 `archive_charter([{opts}])`

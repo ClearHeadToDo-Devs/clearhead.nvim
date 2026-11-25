@@ -664,26 +664,25 @@ M.close_charter = function(opts)
 	run_charter_cmd(cmd, "Charter closed.", "Close charter", project_root_for_path(buf_path))
 end
 
---- Jot a note on a charter via `clearhead jot charter`. The charter is
---- opts.charter, else the current buffer's charter when the buffer is a
---- charter file. The note goes to the charter's sidecar, never its document.
---- The CLI's reply names where it wrote, and is shown as-is.
-M.jot = function(text, opts)
-	opts = opts or {}
+--- Run `clearhead jot` with `args` from `cwd` and show the CLI's reply,
+--- which names where it wrote. With no `text`, ask for it first; an empty
+--- answer jots nothing.
+local function run_jot(args, text, cwd)
 	local bin = config.get_bin_path()
 	if not bin then
 		vim.notify("clearhead binary not found.", vim.log.levels.ERROR)
 		return
 	end
-	local path = vim.api.nvim_buf_get_name(0)
-	local in_charter = workspace_root_for_charter_path(path) ~= nil
-	local charter = opts.charter or (in_charter and charter_stem(path)) or nil
-	if not charter then
-		vim.notify("clearhead: name a charter to jot on, or jot from a charter file.", vim.log.levels.WARN)
+	if text == nil then
+		vim.ui.input({ prompt = "Note: " }, function(answer)
+			if answer and vim.trim(answer) ~= "" then
+				run_jot(args, answer, cwd)
+			end
+		end)
 		return
 	end
-	local cmd = { bin, "jot", "charter", charter, "--", text }
-	local cwd = in_charter and project_root_for_path(path) or vim.fn.getcwd()
+	local cmd = vim.list_extend({ bin, "jot" }, args)
+	vim.list_extend(cmd, { "--", text })
 	vim.system(cmd, { cwd = cwd, text = true }, function(done)
 		vim.schedule(function()
 			if done.code ~= 0 then
@@ -694,6 +693,35 @@ M.jot = function(text, opts)
 			vim.cmd("silent! checktime")
 		end)
 	end)
+end
+
+--- Jot a note on a charter via `clearhead jot charter`. The charter is
+--- opts.charter, else the current buffer's charter when the buffer is a
+--- charter document or one of its actions files. The note goes to the
+--- charter's sidecar, never its document. With no `text`, ask for it.
+M.jot = function(text, opts)
+	opts = opts or {}
+	local path = vim.api.nvim_buf_get_name(0)
+	local in_charter = workspace_root_for_charter_path(path) ~= nil
+	local charter = opts.charter or (in_charter and charter_stem(path)) or nil
+	if not charter then
+		vim.notify("clearhead: name a charter to jot on, or jot from a charter file.", vim.log.levels.WARN)
+		return
+	end
+	local cwd = in_charter and project_root_for_path(path) or vim.fn.getcwd()
+	run_jot({ "charter", charter }, text, cwd)
+end
+
+--- Jot a note on the action under the cursor via `clearhead jot <id>`. Works
+--- on a quickfix entry too, run from that action's own workspace. With no
+--- `text`, ask for it.
+M.jot_action = function(text)
+	local id = M.action_id_under_cursor()
+	if not id then
+		vim.notify("clearhead: no action under the cursor.", vim.log.levels.WARN)
+		return
+	end
+	run_jot({ id }, text, require("clearhead.notes").cursor_cwd())
 end
 
 --- Peek at the notes of the current buffer's charter: a charter document, or
