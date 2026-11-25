@@ -671,6 +671,9 @@ Notes ~
                                              it again to enter the float, `s` there
                                              to keep them in a split. Also works on
                                              a quickfix entry if you map it there.
+  `<localleader>N`        `charter-notes`      Peek at the notes of the current
+                                             charter: the charter document, or the
+                                             actions file's charter. Same float.
 
 Quickfix (no default keys) ~
 

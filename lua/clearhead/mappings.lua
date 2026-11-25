@@ -72,6 +72,9 @@ M.charter = {
 	{ "close-charter", "<localleader>C", "Close current charter", function()
 		ch().close_charter()
 	end },
+	{ "charter-notes", "<localleader>N", "Peek at the current charter's notes", function()
+		ch().show_charter_notes()
+	end },
 	{ "open-inbox", "<localleader>i", "Open default capture file", function()
 		ch().open_inbox(0)
 	end },

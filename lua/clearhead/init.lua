@@ -696,6 +696,19 @@ M.jot = function(text, opts)
 	end)
 end
 
+--- Peek at the notes of the current buffer's charter: a charter document, or
+--- an actions file under charters/ (whose charter it is). opts as for
+--- notes.show.
+M.show_charter_notes = function(opts)
+	local path = vim.api.nvim_buf_get_name(0)
+	if not workspace_root_for_charter_path(path) then
+		vim.notify("clearhead: not a charter file.", vim.log.levels.WARN)
+		return
+	end
+	opts = vim.tbl_extend("force", opts or {}, { what = "charter" })
+	require("clearhead.notes").show(charter_stem(path), opts)
+end
+
 M.archive_charter = function(opts)
 	opts = opts or {}
 	local bufnr = vim.api.nvim_get_current_buf()

@@ -77,7 +77,8 @@ local function open_float(id, lines)
 end
 
 --- Show the notes of `target` (an id or alias), else of the action under the
---- cursor. `opts.split` opens the split straight away. The CLI runs from the
+--- cursor. `opts.split` opens the split straight away; `opts.what` names the
+--- entity in the empty message (default "action"). The CLI runs from the
 --- action's own workspace, so a quickfix entry from another workspace works.
 M.show = function(target, opts)
 	opts = opts or {}
@@ -110,7 +111,7 @@ M.show = function(target, opts)
 				return
 			end
 			if #notes == 0 then
-				vim.notify("clearhead: no notes on this action yet.")
+				vim.notify(("clearhead: no notes on this %s yet."):format(opts.what or "action"))
 				return
 			end
 			local lines = M.render(notes)

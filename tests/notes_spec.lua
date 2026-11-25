@@ -99,6 +99,25 @@ describe("notes", function()
 			assert.are.same({}, floats())
 		end)
 
+		it("peeks at the notes of the charter whose file is open", function()
+			fake_cli(NOTE)
+			local charters = root .. "/.clearhead/charters"
+			vim.fn.mkdir(charters, "p")
+			vim.cmd.edit(charters .. "/deployment.md")
+			require("clearhead").show_charter_notes()
+			vim.wait(2000, function()
+				return #floats() > 0
+			end)
+			assert.are.same({ "show", "notes", "deployment", "--json" }, vim.fn.readfile(script .. ".args"))
+			assert.are.equal(1, #floats())
+		end)
+
+		it("refuses a file that is not a charter's", function()
+			vim.cmd.edit(root .. "/elsewhere.md")
+			require("clearhead").show_charter_notes()
+			assert.are.same({ "clearhead: not a charter file." }, notified)
+		end)
+
 		it("says so instead of opening an empty float", function()
 			fake_cli("[]")
 			notes.show("abc")
