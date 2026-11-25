@@ -1,5 +1,5 @@
 {
-  "$schema": "https://clearhead.dev/schemas/v0.5.0/charter_metadata.schema.json",
+  "$schema": "https://clearhead.dev/schemas/v0.8.0/charter_metadata.schema.json",
   "actions": {
     "019d7e8f-c159-7be3-b3fe-f07dc10f9b1d": {
       "created": "2026-05-25T21:00:09.557484204Z"
@@ -67,5 +67,19 @@
     "01a0ccae-5a25-7675-8400-572301a068c3": {
       "created": "2026-09-23T05:12:53.541Z"
     }
+  },
+  "notes": {
+    "01a1eab5-4603-7da0-989d-7b56e02a5722": [
+      {
+        "at": "2026-11-25T01:18:27Z",
+        "by": "agent:facilitator",
+        "text": "Facilitator, 2026-11-17: 226 of 416 open actions had descriptions over 400 chars; only 34 carried dated history, so moving history to notes would fix few."
+      },
+      {
+        "at": "2026-11-25T01:18:27Z",
+        "by": "agent:facilitator",
+        "text": "2026-11-25: after the trims of 2026-11-24 and today, the longest open description is under 400 chars (114 open actions), and history now lives in notes."
+      }
+    ]
   }
 }
