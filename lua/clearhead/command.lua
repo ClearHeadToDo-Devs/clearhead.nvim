@@ -177,6 +177,13 @@ M.tree = {
 		},
 	},
 	jot = jot,
+	show = {
+		notes = {
+			run = function(args)
+				ch().show_notes(first(args), { split = true })
+			end,
+		},
+	},
 	debug = {
 		run = function()
 			ch().open_cli_output({ "debug" })

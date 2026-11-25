@@ -40,6 +40,7 @@ local lazy_exports = {
 	preview_graph = { "graph_view", "preview" },
 	open_quick_add = { "quick_add", "open" },
 	open_cli_output = { "text_view", "open" },
+	show_notes = { "notes", "show" },
 }
 
 -- Both the wrappers and the distinct module set below are projections of the

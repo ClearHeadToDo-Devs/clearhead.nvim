@@ -664,6 +664,14 @@ Charter and navigation ~
   `<localleader>s`        `pick-actions`       Picker: active action files
   `<localleader>S`        `pick-charters`      Picker: charter documents
 
+Notes ~
+
+  `<localleader>n`        `notes`              Peek at the notes of the action under
+                                             the cursor (|:Clearhead-show|). Press
+                                             it again to enter the float, `s` there
+                                             to keep them in a split. Also works on
+                                             a quickfix entry if you map it there.
+
 Quickfix (no default keys) ~
 
   `entry-complete`   Complete the action under the cursor
@@ -693,6 +701,7 @@ These commands are always available regardless of the current filetype.
     `unarchive` `action`  |:Clearhead-unarchive|
     `query`   `show`      |:Clearhead-query|
     `jot`                 |:Clearhead-jot|
+    `show`    `notes`     |:Clearhead-show|
     `debug`               |:Clearhead-debug|
     `query`   `index`     |:Clearhead-query|
     `query`   `chain`     |:Clearhead-query|
@@ -770,6 +779,15 @@ These commands are always available regardless of the current filetype.
     when it is a charter file; with neither it warns and writes nothing.
     With no {text} it prompts, so the bare command can be bound to a key.
     The CLI's reply, which names where it wrote, is shown.
+
+                                                     *:Clearhead-show*
+:Clearhead show notes [{target}]
+    Open the notes of {target} (an id or alias of any charter, action or
+    Habit), else of the action under the cursor, in a read-only markdown
+    split, oldest first so the newest is last. Reads `clearhead show notes
+    --json` from the action's own workspace. With no notes it says so and
+    opens nothing. `<Plug>(clearhead-notes)` shows the same notes in a peek
+    float instead. `q` closes the split.
 
                                                     *:Clearhead-debug*
 :Clearhead debug

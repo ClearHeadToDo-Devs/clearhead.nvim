@@ -59,6 +59,10 @@ M.actions = {
 	{ "dedent", "<<", "Decrease action depth", in_actions(function()
 		ch().dedent_action(0, line())
 	end) },
+	-- Not in_actions: a quickfix entry has an action under the cursor too.
+	{ "notes", "<localleader>n", "Peek at the notes of the action under the cursor", function()
+		ch().show_notes()
+	end },
 }
 
 M.charter = {
