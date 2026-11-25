@@ -69,6 +69,13 @@
     }
   },
   "notes": {
+    "01a0ccae-5a25-7675-8400-572301a068c3": [
+      {
+        "at": "2026-11-25T01:33:56Z",
+        "by": "agent:facilitator",
+        "text": "Done by nvim f01c5c1: :Clearhead jot notes the charter through clearhead jot charter, into its sidecar. The virtual-text timestamps applied to ## Log, which notes replace."
+      }
+    ],
     "01a1eab5-4603-7da0-989d-7b56e02a5722": [
       {
         "at": "2026-11-25T01:18:27Z",
@@ -79,6 +86,11 @@
         "at": "2026-11-25T01:18:27Z",
         "by": "agent:facilitator",
         "text": "2026-11-25: after the trims of 2026-11-24 and today, the longest open description is under 400 chars (114 open actions), and history now lives in notes."
+      },
+      {
+        "at": "2026-11-25T01:34:03Z",
+        "by": "agent:facilitator",
+        "text": "2026-11-25: cancelled; the trims and notes moved logs out of descriptions, so each action already reads short."
       }
     ]
   }
