@@ -1,17 +1,61 @@
 {
-  "$schema": "https://raw.githubusercontent.com/ClearHeadToDo-Devs/specifications/v0.1.0/schemas/charter_metadata.schema.json",
+  "$schema": "https://clearhead.dev/schemas/v0.8.0/charter_metadata.schema.json",
   "charter": {
     "id": "01a0dd04-2f75-77e7-8cf7-515083689aa3"
   },
   "actions": {
     "01a0dd04-56f9-71a3-8a32-a674338e17ff": {
-      "created": "2026-09-26T02:20:44.281-07:00"
+      "created": "2026-09-26T09:20:44.281Z"
     },
     "01a0dd04-5702-70a6-99af-2a9825e5d53e": {
-      "created": "2026-09-26T02:20:44.290-07:00"
+      "created": "2026-09-26T09:20:44.290Z"
     },
     "01a0dd04-570b-72fc-8fa5-44a33f63757e": {
-      "created": "2026-09-26T02:20:44.299-07:00"
+      "created": "2026-09-26T09:20:44.299Z"
     }
+  },
+  "notes": {
+    "01a0dd04-2f75-77e7-8cf7-515083689aa3": [
+      {
+        "at": "2026-09-29T22:12:00-07:00",
+        "text": "Dispatcher is lua/clearhead/command.lua: one verb-noun tree drives dispatch and completion; a new command is one table entry, and a leaf may supply complete(lead, rest)."
+      },
+      {
+        "at": "2026-09-29T22:12:00-07:00",
+        "text": "Decisions: clean break from :ClearheadX (no wrappers); diff dropped; archive maps to 'archive charter' since archive_workspace already ran 'archive charter --closed'; 'open root' replaces the inbox naming."
+      },
+      {
+        "at": "2026-09-29T22:12:00-07:00",
+        "text": "'clearhead query list' is the authority for view names (TYPE column: index/tree/graph, built-in and saved). It only prints a box table with no --format, so query.parse_list is fragile; a 'query list --format json' in clearhead-cli would fix it."
+      },
+      {
+        "at": "2026-09-29T22:12:00-07:00",
+        "text": "'query index chain' exits 0 with no rows when given no target; the CLI models it as its own verb 'query chain <QUERY>'. command.lua filters it from index completion via needs_target until that verb is mirrored."
+      },
+      {
+        "at": "2026-09-29T22:12:00-07:00",
+        "text": "The quickfix refresh (view.lua) re-runs only the view name stored in the list context (clearhead_query), so any view taking arguments (chain target, --charter) must record its args there first or refresh will silently drop them."
+      },
+      {
+        "at": "2026-09-29T22:12:00-07:00",
+        "text": "Testing: 'busted tests' runs in about 0.1s; for live checks use 'timeout 20 nvim --headless -u NONE -l script.lua'. Heredoc-heavy one-liners and unbounded headless nvim runs hung the shell twice, so use script files and timeouts."
+      },
+      {
+        "at": "2026-09-29T22:47:00-07:00",
+        "text": "view-args done: qf context stores the argv after 'clearhead query' (string name = shorthand for {index, name}); refresh re-runs it from the CURRENT cwd by design (cwd = the user's declared workspace, same rule as query.lua), and the title shows the literal command + workspace so a post-:cd refresh explains itself. Full-suite 'hang' earlier was the heredoc shell issue again, not busted."
+      },
+      {
+        "at": "2026-09-29T23:15:00-07:00",
+        "text": "query chain + --charter done. Kept the needs_target filter the query-chain action said to drop: 'query index chain' still returns nothing, and chain is now discoverable as its own sibling verb. Live-testing chain found an April bug in actions.get_enclosing_action_node: a whole-line range (col -1) climbed past any action ending on its line, so set_state_tree on a child rewrote the parent and all siblings, and a childless root reported 'No action found'. Fixed by anchoring on the first non-blank column; tests/actions_spec.lua pins it with the real parser."
+      },
+      {
+        "at": "2026-09-30T00:13:00-07:00",
+        "text": "list-json done: completion and the quickfix title read the CLI's piped JSON (query list, debug) through one cli_json helper in query.lua; parse_list and its box-table fixture are gone, and tests use a fake clearhead script. Needs a CLI with debug-list-json (core 5d8202b+); an older one degrades to no completions and the cwd's name. Correction to the 09-29 testing note: the 'hangs' are stdin, not heredocs as such. Headless nvim waits on an inherited open stdin at exit, and my shell only adds < /dev/null when the command has no heredoc. Always run 'busted tests < /dev/null' and 'nvim --headless -l x.lua < /dev/null'."
+      },
+      {
+        "at": "2026-09-30T00:33:00-07:00",
+        "text": "Charter complete 2026-09-30: every old command has its verb-noun form and the CLI's query, jot and debug verbs are mirrored (table above). Left outside this charter, in the root next.actions: sidebar/tree views, priority hotkey, charter init/id/jot-with-virtual-text, and the structure review against the CLI. init.lua is still about 1050 lines; jot went there beside close_charter, so that review should split the charter commands out."
+      }
+    ]
   }
 }

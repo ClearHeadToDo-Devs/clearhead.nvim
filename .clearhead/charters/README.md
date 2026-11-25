@@ -5,5 +5,3 @@ state: Active
 # Clearhead.nvim intentions
 
 intentions around the ClearHead.nvim plugin
-
-## Logs
